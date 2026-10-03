@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>百度输入法 · 综合工具</title>
+  <title>自动解密☆百度输入法工具</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/upng-js@2.1.0/UPNG.js"></script>
@@ -324,6 +324,10 @@
     .text-editor-btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .text-editor-btn.save-btn { background: #2a5a3e; }
     .text-editor-btn.save-btn:hover:not(:disabled) { background: #1f4a2e; }
+    .text-editor-btn.pack-btn { background: #6b4a8e; }
+    .text-editor-btn.pack-btn:hover:not(:disabled) { background: #5a3a7e; }
+    .text-editor-btn.pack-edited-btn { background: #8a5a7a; }
+    .text-editor-btn.pack-edited-btn:hover:not(:disabled) { background: #6a4a5a; }
 
     .editor-container { border: 1px solid var(--border-subtle); border-radius: 14px;
       background: var(--bg-card); overflow: hidden; }
@@ -398,7 +402,7 @@
 <body>
   <div class="toast-container" id="toastContainer"></div>
   <div class="card">
-    <h1>⌨️ 百度输入法 · 综合工具</h1>
+    <h1>⌨️ 自动解密☆百度输入法工具</h1>
     <div class="sub">图片压缩 · 皮肤双向转换 · 溯源秘标 · 加密/解密 · 音效处理 · 字体打标 · 融彩转换 · 文本编辑</div>
 
     <div class="main-tabs" id="mainTabs">
@@ -528,17 +532,15 @@
           <select id="editorFileSelect">
             <option value="">-- 请先选包 --</option>
           </select>
-          <button class="text-editor-btn save-btn" id="editorSaveBtn" disabled>💾 保存并下载</button>
-          <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:var(--text-secondary);cursor:pointer;white-space:nowrap;">
-            <input type="checkbox" id="editorAutoSaveToShared" style="width:16px;height:16px;accent-color:var(--color-accent);cursor:pointer;" checked>
-            切工具时自动保存
-          </label>
+          <button class="text-editor-btn save-btn" id="editorSaveBtn" disabled>💾 保存并下载当前包</button>
+          <button class="text-editor-btn pack-btn" id="editorPackAllBtn" disabled>📦 打包下载（全部）</button>
+          <button class="text-editor-btn pack-edited-btn" id="editorPackEditedBtn" disabled>📦 打包下载（仅编辑过的）</button>
           <span class="editor-status" id="editorStatus">⏳ 等待加载</span>
         </div>
         <div class="editor-container">
           <div class="editor-wrap">
             <div class="editor-highlight" id="editorHighlight"></div>
-            <textarea class="editor-textarea" id="editorTextarea" placeholder="请选择包和包内文件，内容会自动加载..." spellcheck="false"></textarea>
+            <textarea class="editor-textarea" id="editorTextarea" placeholder="请选择包和包内文件，内容会自动加载，修改后自动保存到内存..." spellcheck="false"></textarea>
           </div>
           <div class="editor-find-bar">
             <label>查找</label>
@@ -796,6 +798,8 @@
       const editorPackageSelect = document.getElementById('editorPackageSelect');
       const editorFileSelect = document.getElementById('editorFileSelect');
       const editorSaveBtn = document.getElementById('editorSaveBtn');
+      const editorPackAllBtn = document.getElementById('editorPackAllBtn');
+      const editorPackEditedBtn = document.getElementById('editorPackEditedBtn');
       const editorTextarea = document.getElementById('editorTextarea');
       const editorHighlight = document.getElementById('editorHighlight');
       const editorFindInput = document.getElementById('editorFindInput');
@@ -805,7 +809,6 @@
       const editorReplaceBtn = document.getElementById('editorReplaceBtn');
       const editorReplaceAllBtn = document.getElementById('editorReplaceAllBtn');
       const editorStatus = document.getElementById('editorStatus');
-      const editorAutoSaveToShared = document.getElementById('editorAutoSaveToShared');
 
       let selectedFiles = [];
       let compressedFiles = [];
@@ -1308,14 +1311,15 @@
           btnMark.disabled = false;
           markStatus.textContent = '📁 ' + files.length + ' 个文件';
           markStatus.className = 'mark-status';
-          
+
           const prevPkg = editorPackageSelect.value;
           editorPackageSelect.innerHTML = '<option value="">-- 请选择包 --</option>' +
             files.map((f, i) => `<option value="${i}">${escapeHtml(f.name)}</option>`).join('');
           if (prevPkg && files[parseInt(prevPkg)]) {
             editorPackageSelect.value = prevPkg;
           }
-          
+          editorPackAllBtn.disabled = false;
+
           if (editorActiveFileName) {
             const idx = files.findIndex(f => f.name === editorActiveFileName);
             if (idx >= 0) {
@@ -1341,6 +1345,7 @@
             editorFileSelect.disabled = true;
             editorSaveBtn.disabled = true;
           }
+          refreshPackEditedBtn();
         } else {
           fileStatus.style.display = 'none';
           compressBtn.disabled = true;
@@ -1358,6 +1363,8 @@
           editorFileSelect.innerHTML = '<option value="">-- 请先选包 --</option>';
           editorFileSelect.disabled = true;
           editorSaveBtn.disabled = true;
+          editorPackAllBtn.disabled = true;
+          editorPackEditedBtn.disabled = true;
           editorStatus.textContent = '⏳ 等待加载';
           editorStatus.className = 'editor-status';
           editorTextarea.value = '';
@@ -1366,6 +1373,11 @@
           currentSearchMatches = [];
           currentSearchIndex = -1;
         }
+      }
+
+      function refreshPackEditedBtn() {
+        const hasEdited = Object.values(editorSessions).some(s => s.edited);
+        editorPackEditedBtn.disabled = !hasEdited;
       }
 
       editorPackageSelect.addEventListener('change', async function() {
@@ -1379,55 +1391,50 @@
         const files = getFilesToProcess();
         const file = files[parseInt(pkgIdx)];
         if (!file) return;
-        const fileName = file.name;
+        const fileNameStr = file.name;
 
-        saveCurrentEditorToSession();
-
-        let session = editorSessions[fileName];
+        let session = editorSessions[fileNameStr];
         if (!session) {
           try {
             const ab = await file.arrayBuffer();
             const zip = await JSZip.loadAsync(ab);
             const allFiles = Object.keys(zip.files).filter(n => !zip.files[n].dir);
-            const options = [];
-            for (const name of allFiles) {
-              const lower = name.toLowerCase();
-              if (lower.endsWith('info.txt') || lower.endsWith('default.css')) options.push(name);
-            }
+            const options = allFiles.filter(n => /\.(txt|css)$/i.test(n));
             if (options.length === 0) {
-              alert('该皮肤包中未找到 Info.txt 或 default.css 文件');
+              alert('该皮肤包中未找到 .txt 或 .css 文件');
               editorFileSelect.innerHTML = '<option value="">-- 该包无可用文件 --</option>';
               editorFileSelect.disabled = true;
               return;
             }
             session = {
               zip: zip,
-              pendingChanges: {},
+              edited: false,
               currentFilePath: '',
-              modified: false,
+              lineEndings: {},
+              infoOptions: options,
               hasLoadedFile: false,
-              infoOptions: options
+              outputName: file.name
             };
-            editorSessions[fileName] = session;
+            editorSessions[fileNameStr] = session;
           } catch (err) {
             alert('解析包失败: ' + err.message);
             return;
           }
         }
 
-        editorActiveFileName = fileName;
+        editorActiveFileName = fileNameStr;
         editorFileSelect.innerHTML = '<option value="">-- 请选择包内文件 --</option>' +
           session.infoOptions.map(p => `<option value="${p}">${escapeHtml(p)}</option>`).join('');
         editorFileSelect.disabled = false;
-        
+
         if (session.hasLoadedFile && session.currentFilePath) {
           editorFileSelect.value = session.currentFilePath;
-          await loadEditorFileFor(fileName, session.currentFilePath);
+          await loadEditorFileFor(fileNameStr, session.currentFilePath);
         } else {
           editorSaveBtn.disabled = true;
           editorTextarea.value = '';
           editorHighlight.innerHTML = '';
-          editorStatus.textContent = '📄 已选包：' + fileName + '，请选择包内文件';
+          editorStatus.textContent = '📄 已选包：' + fileNameStr + '，请选择包内文件';
           editorStatus.className = 'editor-status';
         }
       });
@@ -1448,36 +1455,49 @@
         const file = files[parseInt(pkgIdx)];
         if (!file) { alert('包不存在'); return; }
 
-        saveCurrentEditorToSession();
         editorActiveFileName = file.name;
         await loadEditorFileFor(file.name, filePath);
       });
 
-      async function loadEditorFileFor(fileName, filePath) {
-        const session = editorSessions[fileName];
+      async function loadEditorFileFor(fileNameStr, filePath) {
+        const session = editorSessions[fileNameStr];
         if (!session) return;
         try {
-          let content;
-          if (session.pendingChanges[filePath] !== undefined) {
-            content = session.pendingChanges[filePath];
+          let bytes;
+          if (session.pendingBytes && session.pendingBytes[filePath] !== undefined) {
+            bytes = session.pendingBytes[filePath];
           } else {
             const entry = session.zip.file(filePath);
             if (!entry) { alert('文件不存在: ' + filePath); return; }
-            content = await entry.async('string');
+            bytes = await entry.async('uint8array');
           }
-          editorTextarea.value = content;
+
+          if (!session.lineEndings[filePath]) {
+            let crlf = 0, lf = 0;
+            for (let i = 0; i < bytes.length; i++) {
+              if (bytes[i] === 0x0A) {
+                if (i > 0 && bytes[i-1] === 0x0D) crlf++; else lf++;
+              }
+            }
+            session.lineEndings[filePath] = crlf > lf ? 'crlf' : 'lf';
+          }
+
+          const content = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+          editorTextarea.value = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
           session.currentFilePath = filePath;
-          session.modified = false;
           session.hasLoadedFile = true;
-          editorActiveFileName = fileName;
+          editorActiveFileName = fileNameStr;
+
           editorFindPrevBtn.disabled = false;
           editorFindNextBtn.disabled = false;
           editorReplaceBtn.disabled = false;
           editorReplaceAllBtn.disabled = false;
           editorSaveBtn.disabled = false;
-          const pendingCount = Object.keys(session.pendingChanges).length;
-          editorStatus.textContent = '📄 ' + fileName + ' / ' + filePath + (pendingCount > 0 ? '（该包共 ' + pendingCount + ' 个文件有未保存改动）' : '');
+
+          const le = session.lineEndings[filePath] === 'crlf' ? 'CRLF' : 'LF';
+          editorStatus.textContent = '📄 ' + fileNameStr + ' / ' + filePath + ' [' + le + ']' + (session.edited ? '（已编辑）' : '');
           editorStatus.className = 'editor-status done';
+
           currentSearchMatches = [];
           currentSearchIndex = -1;
           editorFindInput.value = '';
@@ -1488,63 +1508,134 @@
         }
       }
 
+      function commitEditorContent() {
+        if (!editorActiveFileName) return;
+        const session = editorSessions[editorActiveFileName];
+        if (!session || !session.currentFilePath) return;
+
+        const path = session.currentFilePath;
+        const le = session.lineEndings[path] || 'lf';
+
+        let content = editorTextarea.value;
+        if (le === 'crlf') {
+          content = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\n/g, '\r\n');
+        } else {
+          content = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        }
+        const bytes = new TextEncoder().encode(content);
+
+        if (!session.originalBytes) session.originalBytes = {};
+        if (session.originalBytes[path] === undefined) {
+          const entry = session.zip.file(path);
+          if (entry) {
+            entry.async('uint8array').then((orig) => {
+              session.originalBytes[path] = orig;
+              maybeMarkEdited(session, path, bytes, orig);
+            });
+            return;
+          }
+        }
+        const orig = session.originalBytes[path];
+        maybeMarkEdited(session, path, bytes, orig);
+      }
+
+      function maybeMarkEdited(session, path, newBytes, origBytes) {
+        const changed = !bytesEqual(newBytes, origBytes);
+        if (!session.pendingBytes) session.pendingBytes = {};
+        session.pendingBytes[path] = newBytes;
+
+        if (changed) {
+          if (!session.edited) {
+            session.edited = true;
+            refreshPackEditedBtn();
+          }
+          editorStatus.textContent = '💾 已自动保存到内存';
+          editorStatus.className = 'editor-status done';
+        }
+      }
+
+      function bytesEqual(a, b) {
+        if (!a || !b) return false;
+        if (a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+        return true;
+      }
+
+      function flushSessionToZip(session) {
+        if (!session.pendingBytes) return;
+        for (const [path, bytes] of Object.entries(session.pendingBytes)) {
+          session.zip.file(path, bytes);
+        }
+        session.pendingBytes = {};
+      }
+
       function saveCurrentEditorToSession() {
         if (!editorActiveFileName) return;
         const session = editorSessions[editorActiveFileName];
         if (!session || !session.currentFilePath) return;
-        if (editorTextarea.value !== session.pendingChanges[session.currentFilePath]) {
-          session.pendingChanges[session.currentFilePath] = editorTextarea.value;
-          session.modified = true;
+        const path = session.currentFilePath;
+        const le = session.lineEndings[path] || 'lf';
+        let content = editorTextarea.value;
+        if (le === 'crlf') {
+          content = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\n/g, '\r\n');
+        } else {
+          content = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        }
+        const bytes = new TextEncoder().encode(content);
+        if (!session.pendingBytes) session.pendingBytes = {};
+        session.pendingBytes[path] = bytes;
+      }
+
+      function flushAllSessionsToZip() {
+        for (const session of Object.values(editorSessions)) {
+          flushSessionToZip(session);
         }
       }
 
-      async function flushEditorIfDirty() {
-        if (!editorAutoSaveToShared || !editorAutoSaveToShared.checked) return false;
-        saveCurrentEditorToSession();
-
-        const hasAny = Object.values(editorSessions).some(s => Object.keys(s.pendingChanges || {}).length > 0);
-        if (!hasAny) return false;
-
-        try {
-          let totalChanged = 0;
-          let totalFiles = 0;
-          const newSelected = [];
-          for (const f of selectedFiles) {
-            const session = editorSessions[f.name];
-            if (!session || Object.keys(session.pendingChanges || {}).length === 0) {
-              newSelected.push(f);
-              continue;
-            }
-            for (const [filePath, content] of Object.entries(session.pendingChanges)) {
-              session.zip.file(filePath, content);
-              totalChanged++;
-            }
-            const outBlob = await session.zip.generateAsync({
-              type: 'blob', compression: 'DEFLATE',
-              compressionOptions: { level: 6 }
-            });
-            const newFile = new File([outBlob], f.name, { type: 'application/zip' });
-            newSelected.push(newFile);
-            totalFiles++;
-            session.pendingChanges = {};
-            session.modified = false;
+      async function regenerateFilesFromSessions() {
+        if (Object.keys(editorSessions).length === 0) return false;
+        flushAllSessionsToZip();
+        const newSelected = [];
+        let changedCount = 0;
+        for (const f of selectedFiles) {
+          const session = editorSessions[f.name];
+          if (!session || !session.edited) {
+            newSelected.push(f);
+            continue;
           }
-          selectedFiles = newSelected;
-          updateFileStatus(selectedFiles);
-          setSharedFiles(selectedFiles, '文本编辑器(自动保存)');
-          log('💾 编辑器改动已自动同步（共 ' + totalChanged + ' 处，涉及 ' + totalFiles + ' 个包）');
+          const outBlob = await session.zip.generateAsync({
+            type: 'blob', compression: 'DEFLATE',
+            compressionOptions: { level: 6 }
+          });
+          const newFile = new File([outBlob], f.name, { type: 'application/zip' });
+          newSelected.push(newFile);
+          changedCount++;
+          session.edited = false;
+        }
+        selectedFiles = newSelected;
+        updateFileStatus(selectedFiles);
+        return changedCount > 0;
+      }
+
+      async function flushEditorIfDirty() {
+        if (editorActiveFileName && editorTextarea.value !== '') {
+          saveCurrentEditorToSession();
+        }
+        flushAllSessionsToZip();
+        const hasEdited = Object.values(editorSessions).some(s => s.edited);
+        if (!hasEdited) return false;
+        try {
+          await regenerateFilesFromSessions();
+          setSharedFiles(selectedFiles, '文本编辑器(自动同步)');
           return true;
         } catch (e) {
-          log('⚠️ 自动保存失败: ' + e.message);
+          log('⚠️ 编辑器同步失败: ' + e.message);
           return false;
         }
       }
 
       editorTextarea.addEventListener('input', function() {
-        if (editorActiveFileName) {
-          const s = editorSessions[editorActiveFileName];
-          if (s) s.modified = true;
-        }
+        commitEditorContent();
         const hasSearch = editorFindInput.value.length > 0;
         if (hasSearch) {
           buildSearchMatches();
@@ -1650,10 +1741,7 @@
         const end = start + searchText.length;
         const newContent = content.slice(0, start) + replaceText + content.slice(end);
         editorTextarea.value = newContent;
-        if (editorActiveFileName) {
-          const s = editorSessions[editorActiveFileName];
-          if (s) s.modified = true;
-        }
+        commitEditorContent();
         editorStatus.textContent = '🔄 已替换 1 处';
         editorStatus.className = 'editor-status done';
         const oldIndex = currentSearchIndex;
@@ -1679,10 +1767,7 @@
         if (count === 0) { alert('未找到匹配内容'); return; }
         const newContent = content.replace(regex, replaceText);
         editorTextarea.value = newContent;
-        if (editorActiveFileName) {
-          const s = editorSessions[editorActiveFileName];
-          if (s) s.modified = true;
-        }
+        commitEditorContent();
         editorStatus.textContent = '🔄 已替换 ' + count + ' 处';
         editorStatus.className = 'editor-status done';
         currentSearchMatches = [];
@@ -1694,10 +1779,8 @@
         if (!editorActiveFileName) { alert('请先加载文件'); return; }
         const session = editorSessions[editorActiveFileName];
         if (!session) { alert('请先加载文件'); return; }
-        if (session.currentFilePath) {
-          session.pendingChanges[session.currentFilePath] = editorTextarea.value;
-          session.zip.file(session.currentFilePath, editorTextarea.value);
-        }
+        saveCurrentEditorToSession();
+        flushSessionToZip(session);
         try {
           const outBlob = await session.zip.generateAsync({
             type: 'blob', compression: 'DEFLATE',
@@ -1714,9 +1797,8 @@
           if (!replaced) newSelected.push(outFile);
           selectedFiles = newSelected;
 
-          session.pendingChanges = {};
-          session.modified = false;
-
+          session.edited = false;
+          refreshPackEditedBtn();
           updateFileStatus(selectedFiles);
           setSharedFiles(selectedFiles, '文本编辑器');
           saveAs(outBlob, outName);
@@ -1729,8 +1811,63 @@
         }
       });
 
+      editorPackAllBtn.addEventListener('click', async function() {
+        if (selectedFiles.length === 0) { alert('没有可下载的文件'); return; }
+        if (editorActiveFileName && editorTextarea.value !== '') {
+          saveCurrentEditorToSession();
+        }
+        flushAllSessionsToZip();
+        const hasEdited = Object.values(editorSessions).some(s => s.edited);
+        if (hasEdited) {
+          await regenerateFilesFromSessions();
+        }
+        if (selectedFiles.length === 1) {
+          const f = selectedFiles[0];
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(f);
+          a.download = f.name;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          log('📥 已下载: ' + f.name);
+          return;
+        }
+        const zip = new JSZip();
+        for (const f of selectedFiles) zip.file(f.name, f);
+        const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+        saveAs(blob, '全部包_' + selectedFiles.length + '个文件.zip');
+        log('📥 已打包下载全部 ' + selectedFiles.length + ' 个文件');
+      });
+
+      editorPackEditedBtn.addEventListener('click', async function() {
+        const editedNames = Object.keys(editorSessions).filter(n => editorSessions[n].edited);
+        if (editedNames.length === 0) { alert('没有编辑过的包'); return; }
+        if (editorActiveFileName && editorTextarea.value !== '') {
+          saveCurrentEditorToSession();
+        }
+        flushAllSessionsToZip();
+        await regenerateFilesFromSessions();
+        const editedFiles = selectedFiles.filter(f => editedNames.some(n => n === f.name));
+        if (editedFiles.length === 0) { alert('编辑过的包为空'); return; }
+        if (editedFiles.length === 1) {
+          const f = editedFiles[0];
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(f);
+          a.download = f.name;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          log('📥 已下载: ' + f.name);
+          return;
+        }
+        const zip = new JSZip();
+        for (const f of editedFiles) zip.file(f.name, f);
+        const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+        saveAs(blob, '编辑过的包_' + editedFiles.length + '个文件.zip');
+        log('📥 已打包下载编辑过的 ' + editedFiles.length + ' 个文件');
+      });
+
       btnMark.addEventListener('click', async () => {
-        await flushEditorIfDirty();
         const markValue = markText.value.trim();
         if (!markValue) { alert('请输入标记内容！'); return; }
         const files = getFilesToProcess();
@@ -1752,6 +1889,8 @@
           selectedFiles = markedFiles;
           compressedFiles = [];
           isCompressed = false;
+          editorSessions = {};
+          editorActiveFileName = '';
           updateFileStatus(selectedFiles);
           setSharedFiles(selectedFiles, '打标');
           markStatus.textContent = '✅ ' + files.length + ' 个文件标记已植入: ' + markValue;
@@ -1864,7 +2003,6 @@
       });
 
       executeSelectedBtn.addEventListener('click', async function() {
-        await flushEditorIfDirty();
         const files = getFilesToProcess();
         if (!files || files.length === 0) { alert('请先上传皮肤包文件'); return; }
         const doMark = optMark.checked && markText.value.trim().length > 0;
@@ -1995,6 +2133,21 @@
         }
       }
 
+      // ★★★ 关键修复：过滤 __MACOSX 和 .DS_Store 等 macOS 元数据 ★★★
+      function isMacMetadata(name) {
+        const lower = name.toLowerCase();
+        if (lower.startsWith('__macosx/') || lower === '__macosx') return true;
+        if (lower.includes('/__macosx/')) return true;
+        const base = lower.split('/').pop();
+        if (base === '.ds_store') return true;
+        if (lower.startsWith('._')) return true;
+        const segs = lower.split('/');
+        for (const s of segs) {
+          if (s === '__macosx' || s === '.ds_store') return true;
+        }
+        return false;
+      }
+
       async function processZipCommonStrict(zip) {
         const outZip = new JSZip();
         const allFiles = Object.keys(zip.files).filter(k => !zip.files[k].dir);
@@ -2003,6 +2156,10 @@
           const entry = zip.files[key];
           let originPath = key.replace(/^\.\//, '').replace(/^\//, '');
           const lowerOrigin = originPath.toLowerCase();
+
+          // ★ 跳过 macOS 元数据
+          if (isMacMetadata(originPath)) continue;
+
           if (lowerOrigin.endsWith('gscopyright.json')) continue;
           if (lowerOrigin.endsWith('rain.til') || lowerOrigin.endsWith('niarbv.til') || lowerOrigin.endsWith('ysdq.til')) continue;
           if (lowerOrigin.endsWith('ysym.ini')) continue;
@@ -2013,14 +2170,10 @@
             const isRootLevel = segments.length === 1;
 
             if (currentMode === 'bds2bdi') {
-              // 安卓转iOS：只保留 bds 根目录的 demo.png，移到 skin/demo.png
-              // 子文件夹（dark/demo.png、light/demo.png 等）全部丢弃
               if (isRootLevel) {
                 outZip.file('skin/demo.png', await entry.async('blob'));
               }
             } else {
-              // iOS转安卓：只把 skin/demo.png 移到根目录 demo.png
-              // 子文件夹里的 demo.png（若存在）全部丢弃
               if (segments.length === 2 && segments[0] === 'skin' && segments[1] === 'demo.png') {
                 outZip.file('demo.png', await entry.async('blob'));
               }
@@ -2141,6 +2294,7 @@
             let processedCount = 0;
             for (const filename of entries) {
               if (zip.files[filename].dir) continue;
+              if (isMacMetadata(filename)) continue;
               if (filename.toLowerCase().endsWith('gscopyright.json')) continue;
               const lowerFilename = filename.toLowerCase();
               if (lowerFilename.endsWith('rain.til') || lowerFilename.endsWith('niarbv.til') || lowerFilename.endsWith('ysdq.til')) continue;
@@ -2363,7 +2517,7 @@
         }
       }
 
-      compressBtn.addEventListener('click', async () => { await flushEditorIfDirty(); compressImages(); });
+      compressBtn.addEventListener('click', async () => { compressImages(); });
 
       async function compressImages() {
         if (!selectedFiles || selectedFiles.length === 0) { alert('请先上传皮肤包文件'); return; }
@@ -2388,6 +2542,7 @@
             let processedCount = 0;
             for (const filename of entries) {
               if (zip.files[filename].dir) continue;
+              if (isMacMetadata(filename)) continue;
               if (filename.toLowerCase().endsWith('gscopyright.json')) continue;
               const lowerFilename = filename.toLowerCase();
               if (lowerFilename.endsWith('rain.til') || lowerFilename.endsWith('niarbv.til') || lowerFilename.endsWith('ysdq.til')) continue;
@@ -2537,7 +2692,6 @@
       }
 
       replaceDemoOnlyBtn.addEventListener('click', async () => {
-        await flushEditorIfDirty();
         if (!customDemoBlob) { alert('请先上传一张替换图'); return; }
         const files = getFilesToProcess();
         if (!files || files.length === 0) { alert('请先上传皮肤包文件'); return; }
@@ -2582,7 +2736,7 @@
         log('✅ 全部替换完成，共 ' + outputs.length + ' 个文件');
       });
 
-      convertBtn.addEventListener('click', async () => { await flushEditorIfDirty(); convert(); });
+      convertBtn.addEventListener('click', async () => { convert(); });
 
       async function convert() {
         const filesToProcess = getFilesToProcess();
@@ -2592,6 +2746,8 @@
         clearLog();
         log('🚀 开始转换 ' + (currentMode === 'bds2bdi' ? '安卓→iOS' : 'iOS→安卓'));
         const outExt = currentMode === 'bds2bdi' ? 'bdi' : 'bds';
+
+        const outputs = [];
 
         for (let idx = 0; idx < filesToProcess.length; idx++) {
           const file = filesToProcess[idx];
@@ -2612,13 +2768,27 @@
               }
             }
             const outName = applyTimeStampToName(finalFile.name);
-            saveAs(outBlob, outName);
-            log('✅ 转换成功: ' + outName);
+            outputs.push(new File([outBlob], outName));
+            log('✅ [' + (idx + 1) + '/' + filesToProcess.length + '] 转换成功: ' + outName);
           } catch (err) {
-            log('❌ ' + file.name + ' 转换失败: ' + err.message);
+            log('❌ [' + (idx + 1) + '/' + filesToProcess.length + '] ' + file.name + ' 转换失败: ' + err.message);
           }
         }
-        setSharedFiles(filesToProcess.map(f => new File([f], f.name)), '格式转换');
+
+        if (outputs.length === 0) {
+          alert('所有文件转换失败');
+        } else if (outputs.length === 1) {
+          saveAs(outputs[0], outputs[0].name);
+          log('📥 已下载: ' + outputs[0].name);
+        } else {
+          const zip = new JSZip();
+          outputs.forEach(f => zip.file(f.name, f));
+          const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+          const zipName = `转换结果_${outputs.length}个文件.zip`;
+          saveAs(zipBlob, zipName);
+          log('📥 已打包下载: ' + zipName);
+        }
+        setSharedFiles(outputs, '格式转换');
         convertBtn.disabled = false;
         convertBtn.textContent = '⚡ 转换并下载';
       }
@@ -2779,7 +2949,6 @@
       }
 
       replaceAudioBtn.addEventListener('click', async function() {
-        await flushEditorIfDirty();
         const filesToProcess = getFilesToProcess();
         if (!filesToProcess || filesToProcess.length === 0) { alert('请先上传皮肤包文件'); return; }
         if (audioReplaceFiles.length === 0) { alert('请先上传音效包 (.zip)'); return; }
@@ -3699,7 +3868,7 @@
           encryptFileInput.value = '';
         }
       });
-      encryptActionBtn.addEventListener('click', async () => { await flushEditorIfDirty(); batchEncryptAction(); });
+      encryptActionBtn.addEventListener('click', async () => { batchEncryptAction(); });
       encryptDownloadAllBtn.addEventListener('click', downloadEncryptAll);
       encryptClearBtn.addEventListener('click', clearEncryptAll);
 
@@ -3852,7 +4021,6 @@
         }
 
         window.startProcess = async function() {
-          await flushEditorIfDirty();
           if (rongcaiSourceZips.length === 0) {
             rongcaiLogMsg('⚠️ 请先加载有效文件');
             return;
