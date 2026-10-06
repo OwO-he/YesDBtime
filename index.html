@@ -2269,8 +2269,16 @@
             const zip = await JSZip.loadAsync(ab);
             const newZip = new JSZip();
             const entries = Object.keys(zip.files);
-            const imageFiles = entries.filter(filename =>
-              !zip.files[filename].dir && /\.(png|jpg|jpeg|webp|gif|bmp)$/i.test(filename));
+            // ★ 修复：数图片时排除后面会被跳过的文件，让分子分母一致
+            const imageFiles = entries.filter(filename => {
+              if (zip.files[filename].dir) return false;
+              if (isMacMetadata(filename)) return false;
+              const lowerFilename = filename.toLowerCase();
+              if (lowerFilename.endsWith('gscopyright.json')) return false;
+              if (lowerFilename.endsWith('rain.til') || lowerFilename.endsWith('niarbv.til') || lowerFilename.endsWith('ysdq.til')) return false;
+              if (lowerFilename.endsWith('ysym.ini')) return false;
+              return /\.(png|jpg|jpeg|webp|gif|bmp)$/i.test(filename);
+            });
             let processedCount = 0;
             for (const filename of entries) {
               if (zip.files[filename].dir) continue;
@@ -2293,17 +2301,19 @@
                 if (baseLower === 'demo.png' && customDemoCompressedBlob) {
                   newZip.file(filename, customDemoCompressedBlob);
                   processedCount++;
-                  updateProgress(Math.round((processedCount / imageFiles.length) * 100));
+                  if (imageFiles.length > 0) updateProgress(Math.round((processedCount / imageFiles.length) * 100));
                   continue;
                 }
                 const compressedData = await compressImageData(fileData, filename);
                 newZip.file(filename, compressedData);
                 processedCount++;
-                updateProgress(Math.round((processedCount / imageFiles.length) * 100));
+                if (imageFiles.length > 0) updateProgress(Math.round((processedCount / imageFiles.length) * 100));
               } else {
                 newZip.file(filename, fileData);
               }
             }
+            // ★ 修复：循环结束后强制补 100%，兜底
+            updateProgress(100);
             const content = await newZip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE', compressionOptions: { level: 6 } });
             const compressedBlob = new Blob([content], { type: 'application/zip' });
             const outName = applyTimeStampToName(file.name);
@@ -2517,8 +2527,16 @@
             const zip = await JSZip.loadAsync(ab);
             const newZip = new JSZip();
             const entries = Object.keys(zip.files);
-            const imageFiles = entries.filter(filename =>
-              !zip.files[filename].dir && /\.(png|jpg|jpeg|webp|gif|bmp)$/i.test(filename));
+            // ★ 修复：数图片时排除后面会被跳过的文件，让分子分母一致
+            const imageFiles = entries.filter(filename => {
+              if (zip.files[filename].dir) return false;
+              if (isMacMetadata(filename)) return false;
+              const lowerFilename = filename.toLowerCase();
+              if (lowerFilename.endsWith('gscopyright.json')) return false;
+              if (lowerFilename.endsWith('rain.til') || lowerFilename.endsWith('niarbv.til') || lowerFilename.endsWith('ysdq.til')) return false;
+              if (lowerFilename.endsWith('ysym.ini')) return false;
+              return /\.(png|jpg|jpeg|webp|gif|bmp)$/i.test(filename);
+            });
             let processedCount = 0;
             for (const filename of entries) {
               if (zip.files[filename].dir) continue;
@@ -2541,17 +2559,19 @@
                 if (baseLower === 'demo.png' && customDemoCompressedBlob) {
                   newZip.file(filename, customDemoCompressedBlob);
                   processedCount++;
-                  updateProgress(Math.round((processedCount / imageFiles.length) * 100));
+                  if (imageFiles.length > 0) updateProgress(Math.round((processedCount / imageFiles.length) * 100));
                   continue;
                 }
                 const compressedData = await compressImageData(fileData, filename);
                 newZip.file(filename, compressedData);
                 processedCount++;
-                updateProgress(Math.round((processedCount / imageFiles.length) * 100));
+                if (imageFiles.length > 0) updateProgress(Math.round((processedCount / imageFiles.length) * 100));
               } else {
                 newZip.file(filename, fileData);
               }
             }
+            // ★ 修复：循环结束后强制补 100%，兜底
+            updateProgress(100);
             const content = await newZip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE', compressionOptions: { level: 6 } });
             const compressedBlob = new Blob([content], { type: 'application/zip' });
             const outName = applyTimeStampToName(file.name);
@@ -3372,7 +3392,7 @@
 
       dropZone.addEventListener('click', () => fileInput.click());
       dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
-      dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('dragover'); });
+      dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
       dropZone.addEventListener('drop', (e) => {
         e.preventDefault();
         dropZone.classList.remove('dragover');
@@ -3850,7 +3870,13 @@
         encryptDropZone.classList.remove('dragover');
         if (e.dataTransfer.files.length > 0) addEncryptFiles(e.dataTransfer.files);
       });
-      encryptDropZone.addEventListener('click', () => encryptFileInput.click());
+      // ★ 修复：阻止 input 点击事件冒泡到父容器，避免"点外层→触发内层→内层冒泡回外层→死循环"
+      encryptFileInput.addEventListener('click', function(e) { e.stopPropagation(); });
+      encryptDropZone.addEventListener('click', function(e) {
+        // ★ 修复：如果点击事件的目标就是 input 本身（或来自 input 的冒泡），不再重复触发
+        if (e.target === encryptFileInput) return;
+        encryptFileInput.click();
+      });
       encryptFileInput.addEventListener('change', function() {
         if (encryptFileInput.files.length > 0) {
           addEncryptFiles(encryptFileInput.files);
