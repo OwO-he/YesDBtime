@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>自动解密☆百度输入法工具</title>
+  <title>自动解密★百度输入法工具</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/upng-js@2.1.0/UPNG.js"></script>
@@ -273,6 +273,16 @@
     .action-btn.rongcai { background: #8a5a7a; color: white; }
     .action-btn.rongcai:hover:not(:disabled) { background: #6a4a5a; }
     .rongcai-badge { background: #8a5a7a; color: white; }
+    /* ★ 新增：模式三按钮样式 */
+    .mode-btn.mode-btn-trans.active-mode { background: #00b894; }
+    .mode-btn.mode-btn-trans.active-mode:hover { background: #009e7f; }
+    .rongcai-trans-slider { display: flex; align-items: center; gap: 12px;
+      margin: 10px 0; padding: 10px 16px; background: var(--bg-compress-options);
+      border-radius: 12px; border: 1px solid var(--border-subtle); }
+    .rongcai-trans-slider label { font-weight: 500; color: var(--text-secondary);
+      font-size: 14px; white-space: nowrap; }
+    .rongcai-trans-slider input[type="range"] { flex: 1; min-width: 120px; accent-color: #00b894; cursor: pointer; }
+    .rongcai-trans-slider .val { font-weight: 700; color: #00b894; min-width: 50px; text-align: right; font-family: monospace; }
     .mark-inline-row { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center;
       margin: 6px 0 10px; padding: 8px 14px; background: var(--bg-subtle);
       border-radius: 12px; border: 1px solid var(--border-subtle); }
@@ -402,7 +412,7 @@
 <body>
   <div class="toast-container" id="toastContainer"></div>
   <div class="card">
-    <h1>⌨️ 自动解密☆百度输入法工具</h1>
+    <h1>⌨️ 自动解密★百度输入法工具</h1>
     <div class="sub">图片压缩 · 皮肤双向转换 · 溯源秘标 · 加密/解密 · 音效处理 · 字体打标 · 融彩转换 · 文本编辑</div>
 
     <div class="main-tabs" id="mainTabs">
@@ -611,6 +621,15 @@
         <button class="mode-btn active-mode" id="btnMode1" onclick="setMode('mode1')">模式一：彩底转融合底</button>
         <br>
         <button class="mode-btn" id="btnMode2" onclick="setMode('mode2')">模式二：融合底转彩底</button>
+        <br>
+        <button class="mode-btn mode-btn-trans" id="btnMode3" onclick="setMode('mode3')">模式三：彩底转融合底二★透明融合</button>
+      </div>
+
+      <!-- ★ 新增：模式三透明融合滑动条（默认隐藏，切到模式三时显示） -->
+      <div class="rongcai-trans-slider" id="rongcaiTransSlider" style="display:none;">
+        <label>羽化起始位置(底部往上)：</label>
+        <input type="range" id="rongcaiTransFadeSlider" min="50" max="95" value="85" step="1">
+        <span class="val" id="rongcaiTransFadeValue">15%</span>
       </div>
 
       <div class="upload-area" id="rongcaiDropBox">
@@ -854,7 +873,6 @@
         if (rongcaiContinueBtn) rongcaiContinueBtn.disabled = !has;
       }
 
-      // ★ 清空编辑器 session（任何工具动过 selectedFiles 后调用）
       function clearEditorSessions() {
         editorSessions = {};
         editorActiveFileName = '';
@@ -868,7 +886,6 @@
         editorStatus.className = 'editor-status';
       }
 
-      // ★ 编辑器写回 selectedFiles（重新生成 File）
       async function flushEditorToFiles() {
         if (editorActiveFileName && editorTextarea.value !== '') {
           saveCurrentEditorToSession();
@@ -1365,7 +1382,6 @@
           }
           editorPackAllBtn.disabled = false;
 
-          // 只在"当前 active 的包还在"时恢复编辑器 select；否则清空
           if (editorActiveFileName) {
             const idx = files.findIndex(f => f.name === editorActiveFileName);
             if (idx >= 0 && editorSessions[editorActiveFileName]) {
@@ -1824,7 +1840,6 @@
         const editedNames = Object.keys(editorSessions).filter(n => editorSessions[n].edited);
         if (editedNames.length === 0) { alert('没有编辑过的包'); return; }
         await flushEditorToFiles();
-        // flush 后 session.edited 都被清成 false 了，从 selectedFiles 里找（用文件名匹配）
         const editedFiles = selectedFiles.filter(f => editedNames.some(n => n === f.name));
         if (editedFiles.length === 0) { alert('编辑过的包为空'); return; }
         if (editedFiles.length === 1) {
@@ -1868,7 +1883,7 @@
           selectedFiles = markedFiles;
           compressedFiles = [];
           isCompressed = false;
-          clearEditorSessions();  // ★ 打标后清空 session
+          clearEditorSessions();
           updateFileStatus(selectedFiles);
           setSharedFiles(selectedFiles, '打标');
           markStatus.textContent = '✅ ' + files.length + ' 个文件标记已植入: ' + markValue;
@@ -2080,7 +2095,7 @@
           saveAs(outBlob, zipName);
           setSharedFiles([new File([outBlob], zipName)], '批量处理');
         }
-        clearEditorSessions();  // ★ 处理完后清空编辑器 session
+        clearEditorSessions();
         log(`✅ 全部处理完成，共 ${outputs.length} 个文件`);
       }
 
@@ -2269,7 +2284,6 @@
             const zip = await JSZip.loadAsync(ab);
             const newZip = new JSZip();
             const entries = Object.keys(zip.files);
-            // ★ 修复：数图片时排除后面会被跳过的文件，让分子分母一致
             const imageFiles = entries.filter(filename => {
               if (zip.files[filename].dir) return false;
               if (isMacMetadata(filename)) return false;
@@ -2312,7 +2326,6 @@
                 newZip.file(filename, fileData);
               }
             }
-            // ★ 修复：循环结束后强制补 100%，兜底
             updateProgress(100);
             const content = await newZip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE', compressionOptions: { level: 6 } });
             const compressedBlob = new Blob([content], { type: 'application/zip' });
@@ -2435,7 +2448,7 @@
             const compressed = canvas.toDataURL('image/webp', quality);
             const compressedData = dataURLtoArrayBuffer(compressed);
             if (compressedData.byteLength < bestSize) { bestResult = compressedData; bestSize = compressedData.byteLength; }
-            if (compressedData.byteLength <= targetSize) break;
+            if (compressedData.byteLength <= maxSize) break;
           }
           return bestResult;
         } catch (e) { return imageData; }
@@ -2527,7 +2540,6 @@
             const zip = await JSZip.loadAsync(ab);
             const newZip = new JSZip();
             const entries = Object.keys(zip.files);
-            // ★ 修复：数图片时排除后面会被跳过的文件，让分子分母一致
             const imageFiles = entries.filter(filename => {
               if (zip.files[filename].dir) return false;
               if (isMacMetadata(filename)) return false;
@@ -2570,7 +2582,6 @@
                 newZip.file(filename, fileData);
               }
             }
-            // ★ 修复：循环结束后强制补 100%，兜底
             updateProgress(100);
             const content = await newZip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE', compressionOptions: { level: 6 } });
             const compressedBlob = new Blob([content], { type: 'application/zip' });
@@ -2732,7 +2743,7 @@
           saveAs(outBlob, '仅替换demo_' + outputs.length + '个文件.zip');
         }
         setSharedFiles(outputs, '仅替换demo');
-        clearEditorSessions();  // ★ 替换完后清空 session
+        clearEditorSessions();
         replaceDemoOnlyBtn.disabled = false;
         replaceDemoOnlyBtn.textContent = '🖼️ 仅替换demo.png';
         log('✅ 全部替换完成，共 ' + outputs.length + ' 个文件');
@@ -2794,7 +2805,7 @@
           log('📥 已打包下载: ' + zipName);
         }
         setSharedFiles(outputs, '格式转换');
-        clearEditorSessions();  // ★ 转换后清空 session
+        clearEditorSessions();
         convertBtn.disabled = false;
         convertBtn.textContent = '⚡ 转换并下载';
       }
@@ -2984,7 +2995,7 @@
             const outName = applyTimeStampToName(finalFile.name);
             saveAs(outBlob, outName);
             setSharedFiles([new File([outBlob], outName)], '音效替换');
-            clearEditorSessions();  // ★
+            clearEditorSessions();
             log('✅ 音效替换成功，已暂存到“继续编辑”池: ' + outName);
           } catch (err) {
             log('❌ 替换失败: ' + err.message);
@@ -3021,7 +3032,7 @@
         const outZipName = '音效替换_' + filesToProcess.length + '个文件.zip';
         saveAs(outBlob, outZipName);
         setSharedFiles([new File([outBlob], outZipName)], '批量音效替换');
-        clearEditorSessions();  // ★
+        clearEditorSessions();
         log('✅ 批量替换完成，已暂存到共享池');
         replaceAudioBtn.disabled = false;
         replaceAudioBtn.textContent = '🔊 替换音效并下载';
@@ -3588,14 +3599,12 @@
         return { local: 0x0001, central: 0x0001 };
       }
 
-      // ★ 修复后的伪加密：按 zip 结构遍历，只改真实文件头，且用 OR 置位（保留 bit 3 等原有位）
       function pseudoEncrypt(data, fileName) {
         const result = new Uint8Array(data);
         const ext = '.' + (fileName.split('.').pop() || '').toLowerCase();
         const flags = getPseudoFlagsByExt(ext);
         let lhCount = 0, cdCount = 0;
 
-        // 用 OR 置位，保留原标志位其他 bit
         function setFlagBits(data, pos, bits) {
           if (pos + 1 >= data.length) return false;
           const old = data[pos] | (data[pos + 1] << 8);
@@ -3605,11 +3614,9 @@
           return true;
         }
 
-        // 1. 找 EOCD
         const eocdSig = [0x50, 0x4B, 0x05, 0x06];
         const eocdPositions = findAllSequencesEnc(result, eocdSig);
         if (eocdPositions.length === 0) {
-          // 没找到 EOCD，退回旧逻辑（保险）
           const localSig = [0x50, 0x4B, 0x03, 0x04];
           const centralSig = [0x50, 0x4B, 0x01, 0x02];
           for (const pos of findAllSequencesEnc(result, localSig)) {
@@ -3628,7 +3635,6 @@
         const totalEntries = readU16(result, eocdPos + 10);
         const cdOffset = readU32(result, eocdPos + 16);
 
-        // 2. 按结构遍历中央目录，改中央目录标志位（OR），同时收集真实 Local Header 偏移
         const realLocalOffsets = [];
         let pos = cdOffset;
         for (let i = 0; i < totalEntries; i++) {
@@ -3642,12 +3648,10 @@
           const localOffset = readU32(result, pos + 42);
           realLocalOffsets.push(localOffset);
 
-          // ★ 改中央目录标志位：用 OR 置位，保留原 bit 3 等
           if (setFlagBits(result, pos + 8, flags.central)) cdCount++;
           pos += 46 + nameLen + extraLen + commentLen;
         }
 
-        // 3. 只改真实的 Local Header 标志位（OR）
         for (const off of realLocalOffsets) {
           if (off + 8 > result.length) continue;
           if (!(result[off] === 0x50 && result[off+1] === 0x4B && result[off+2] === 0x03 && result[off+3] === 0x04)) {
@@ -3659,7 +3663,6 @@
         return { data: result, lhCount, cdCount };
       }
 
-      // ★ 修复后的伪解密：按 zip 结构遍历，只清真实文件头的标志位
       function pseudoDecrypt(data) {
         const result = new Uint8Array(data);
         let lhCount = 0, cdCount = 0;
@@ -3954,10 +3957,8 @@
         encryptDropZone.classList.remove('dragover');
         if (e.dataTransfer.files.length > 0) addEncryptFiles(e.dataTransfer.files);
       });
-      // ★ 修复：阻止 input 点击事件冒泡到父容器，避免"点外层→触发内层→内层冒泡回外层→死循环"
       encryptFileInput.addEventListener('click', function(e) { e.stopPropagation(); });
       encryptDropZone.addEventListener('click', function(e) {
-        // ★ 修复：如果点击事件的目标就是 input 本身（或来自 input 的冒泡），不再重复触发
         if (e.target === encryptFileInput) return;
         encryptFileInput.click();
       });
@@ -3984,6 +3985,10 @@
         const rongcaiStatusList = document.getElementById('rongcaiStatusList');
         const btnMode1 = document.getElementById('btnMode1');
         const btnMode2 = document.getElementById('btnMode2');
+        const btnMode3 = document.getElementById('btnMode3');
+        const rongcaiTransSlider = document.getElementById('rongcaiTransSlider');
+        const rongcaiTransFadeSlider = document.getElementById('rongcaiTransFadeSlider');
+        const rongcaiTransFadeValue = document.getElementById('rongcaiTransFadeValue');
 
         let rongcaiSourceFiles = [];
         let rongcaiSourceZips = [];
@@ -4008,19 +4013,25 @@
           rongcaiStatusList.innerHTML = '';
         }
 
+        // ★ 修改：setMode 支持 mode3，并切换滑块显示
         window.setMode = function(mode) {
           rongcaiCurrentMode = mode;
-          if(mode === 'mode1') {
-            btnMode1.classList.add('active-mode');
-            btnMode2.classList.remove('active-mode');
-          } else {
-            btnMode2.classList.add('active-mode');
-            btnMode1.classList.remove('active-mode');
-          }
+          btnMode1.classList.toggle('active-mode', mode === 'mode1');
+          btnMode2.classList.toggle('active-mode', mode === 'mode2');
+          btnMode3.classList.toggle('active-mode', mode === 'mode3');
+          rongcaiTransSlider.style.display = (mode === 'mode3') ? 'flex' : 'none';
         };
 
         btnMode1.classList.add('active-mode');
         btnMode2.classList.remove('active-mode');
+        btnMode3.classList.remove('active-mode');
+        rongcaiTransSlider.style.display = 'none';
+
+        // ★ 新增：模式三滑动条联动
+        rongcaiTransFadeValue.textContent = (100 - rongcaiTransFadeSlider.value) + '%';
+        rongcaiTransFadeSlider.addEventListener('input', () => {
+          rongcaiTransFadeValue.textContent = (100 - rongcaiTransFadeSlider.value) + '%';
+        });
 
         rongcaiDropBox.addEventListener('dragover', (e) => { e.preventDefault(); rongcaiDropBox.classList.add('active'); });
         rongcaiDropBox.addEventListener('dragleave', () => rongcaiDropBox.classList.remove('active'));
@@ -4095,7 +4106,7 @@
                 grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
                 ctx.fillStyle = grad;
                 ctx.fillRect(0, bottomSixthY, w, solidStartY - bottomSixthY);
-              } else {
+              } else if (rongcaiCurrentMode === 'mode2') {
                 const bottomSixthY = h - (h / 6);
                 const fusionHeight = h / 6;
                 const solidHeight = fusionHeight * 0.5;
@@ -4112,6 +4123,53 @@
                 ctx.fillStyle = grad;
                 ctx.fillRect(0, bottomSixthY, w, fusionHeight - solidHeight);
               }
+              // ★ mode3 不在这里处理（走单独的平滑羽化算法）
+              canvas.toBlob(blob => { resolve(blob); }, 'image/png');
+            };
+            img.onerror = (e) => reject(e);
+            img.src = url;
+          });
+        }
+
+        // ★ 新增：模式三专用——平滑羽化透明处理
+        // 与用户给的原始代码逻辑一致：从 fadeStartY 到底部 alpha 用 smoothstep 过渡到 0
+        async function rongcaiProcessImagePngTrans(pngBlob) {
+          return new Promise((resolve, reject) => {
+            const img = new Image();
+            const url = URL.createObjectURL(pngBlob);
+            img.onload = () => {
+              const w = img.naturalWidth;
+              const h = img.naturalHeight;
+              const canvas = document.createElement('canvas');
+              canvas.width = w; canvas.height = h;
+              const ctx = canvas.getContext('2d', { willReadFrequently: true });
+              ctx.drawImage(img, 0, 0);
+              URL.revokeObjectURL(url);
+
+              const imageData = ctx.getImageData(0, 0, w, h);
+              const data = imageData.data;
+
+              const startPercent = parseInt(rongcaiTransFadeSlider.value) / 100;
+              const fadeStartY = Math.floor(h * startPercent);
+              const fadeEndY = h;
+              const fadeRange = fadeEndY - fadeStartY;
+
+              for (let y = 0; y < h; y++) {
+                let alphaMultiplier = 1.0;
+                if (y >= fadeEndY) {
+                  alphaMultiplier = 0;
+                } else if (y >= fadeStartY) {
+                  const progress = (y - fadeStartY) / fadeRange;
+                  const smoothProgress = progress * progress * (3 - 2 * progress);
+                  alphaMultiplier = 1 - smoothProgress;
+                }
+                for (let x = 0; x < w; x++) {
+                  const index = (y * w + x) * 4;
+                  data[index + 3] = Math.floor(data[index + 3] * alphaMultiplier);
+                }
+              }
+
+              ctx.putImageData(imageData, 0, 0);
               canvas.toBlob(blob => { resolve(blob); }, 'image/png');
             };
             img.onerror = (e) => reject(e);
@@ -4126,7 +4184,9 @@
           }
           rongcaiProcBtn.disabled = true;
           rongcaiDlBtn.disabled = true;
-          rongcaiLogMsg(`\n===== 🚀 开始批量处理 (模式: ${rongcaiCurrentMode === 'mode1' ? '彩底转融合底' : '融合底转彩底'}) =====`);
+          const modeLabel = rongcaiCurrentMode === 'mode1' ? '彩底转融合底' :
+                            rongcaiCurrentMode === 'mode2' ? '融合底转彩底' : '彩底转融合底二★透明融合';
+          rongcaiLogMsg(`\n===== 🚀 开始批量处理 (模式: ${modeLabel}) =====`);
           rongcaiSetStatus(`正在处理 0/${rongcaiSourceZips.length}...`);
           rongcaiStatusList.innerHTML = '';
           rongcaiOutputZips = [];
@@ -4151,6 +4211,16 @@
                 const hasDark = segs.includes('dark');
                 if (!hasLight && !hasDark) continue;
                 const blob = await zip.file(abjPath).async('blob');
+
+                // ★ 模式三分支：透明融合
+                if (rongcaiCurrentMode === 'mode3') {
+                  const processed = await rongcaiProcessImagePngTrans(blob);
+                  zip.file(abjPath, processed);
+                  processedCount++;
+                  continue;
+                }
+
+                // mode1 / mode2：原有逻辑
                 const fillColor = hasDark ? '#2E2E2E' : '#D2D5DB';
                 const processed = await rongcaiProcessImagePng(blob, fillColor);
                 zip.file(abjPath, processed);
@@ -4160,17 +4230,23 @@
                 rongcaiLogMsg(`⚠️ ${fileName} 未找到 abj.png（跳过）`);
               }
 
-              const suffix = rongcaiCurrentMode === 'mode1' ? '融合底' : '彩底';
+              // ★ 输出文件名后缀：mode3 用「透明融合」
+              const suffix = rongcaiCurrentMode === 'mode1' ? '融合底' :
+                             rongcaiCurrentMode === 'mode2' ? '彩底' : '透明融合';
               const baseName = fileName.slice(0, fileName.lastIndexOf('.'));
               let newBaseName = baseName;
               if (rongcaiCurrentMode === 'mode1') {
                 newBaseName = baseName.replace(/彩底/g, '融合底');
-              } else {
+              } else if (rongcaiCurrentMode === 'mode2') {
                 newBaseName = baseName.replace(/融合底/g, '彩底');
+              } else {
+                // mode3：不加替换（避免误替换），直接追加后缀
               }
               const alreadyHasSuffix = rongcaiCurrentMode === 'mode1'
                 ? newBaseName.includes('融合底')
-                : newBaseName.includes('彩底');
+                : rongcaiCurrentMode === 'mode2'
+                  ? newBaseName.includes('彩底')
+                  : newBaseName.includes('透明融合');
               let outputName;
               if (alreadyHasSuffix) {
                 outputName = `${newBaseName}.${ext}`;
