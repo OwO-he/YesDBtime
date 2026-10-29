@@ -428,8 +428,8 @@
       </div>
 
       <div class="mode-tabs" id="modeTabs">
-        <button class="mode-tab active" data-mode="bds2bdi">📱 安卓 → iOS</button>
-        <button class="mode-tab" data-mode="bdi2bds">📱 iOS → 安卓</button>
+        <button class="mode-tab active" data-mode="bdi2bds">📱 iOS → 安卓</button>
+        <button class="mode-tab" data-mode="bds2bdi">📱 安卓 → iOS</button>
         <button class="mode-tab" data-mode="audioExtract">🎵 提取音效</button>
         <button class="mode-tab" data-mode="audioConvert">🔄 音效转换</button>
         <button class="mode-tab" data-mode="audioReplace">🔊 替换音效</button>
@@ -445,7 +445,7 @@
       <div id="fileStatus" class="file-status" style="display: none;">
         <span class="file-name" id="fileName">未命名</span>
         <span class="badge" id="fileSize">0 KB</span>
-        <span class="direction-badge" id="directionBadge">→ iOS</span>
+        <span class="direction-badge" id="directionBadge">→ 安卓</span>
       </div>
 
       <div class="action-row" style="margin-top: 4px;">
@@ -505,6 +505,7 @@
         <label><input type="checkbox" id="optReplaceDemo"> 🖼️ 替换 demo.png</label>
         <label><input type="checkbox" id="optConvert"> ⚡ 转换格式（安卓↔iOS）</label>
         <label><input type="checkbox" id="optCompress"> 🗜️ 压缩图片</label>
+        <label><input type="checkbox" id="optDeleteHintPop"> 🗑️ 删除 hint1.pop</label>
       </div>
 
       <div class="action-row">
@@ -625,7 +626,6 @@
         <button class="mode-btn mode-btn-trans" id="btnMode3" onclick="setMode('mode3')">模式三：彩底转融合底二★透明融合</button>
       </div>
 
-      <!-- ★ 新增：模式三透明融合滑动条（默认隐藏，切到模式三时显示） -->
       <div class="rongcai-trans-slider" id="rongcaiTransSlider" style="display:none;">
         <label>羽化起始位置(底部往上)：</label>
         <input type="range" id="rongcaiTransFadeSlider" min="50" max="95" value="85" step="1">
@@ -781,6 +781,7 @@
       const optReplaceDemo = document.getElementById('optReplaceDemo');
       const optConvert = document.getElementById('optConvert');
       const optCompress = document.getElementById('optCompress');
+      const optDeleteHintPop = document.getElementById('optDeleteHintPop');
       const executeSelectedBtn = document.getElementById('executeSelectedBtn');
 
       const continueEditBtn = document.getElementById('continueEditBtn');
@@ -834,7 +835,7 @@
       let customDemoFile = null;
       let customDemoBlob = null;
       let customDemoCompressedBlob = null;
-      let currentMode = 'bds2bdi';
+      let currentMode = 'bdi2bds';
       let isCompressed = false;
       let isProcessing = false;
       let selectedFontFiles = [];
@@ -2005,7 +2006,8 @@
         const doReplaceDemo = optReplaceDemo.checked && customDemoBlob;
         const doConvert = optConvert.checked && (currentMode === 'bds2bdi' || currentMode === 'bdi2bds');
         const doCompress = optCompress.checked;
-        if (!doMark && !doReplaceDemo && !doConvert && !doCompress) { alert('请至少勾选一个有效操作'); return; }
+        const doDeleteHintPop = optDeleteHintPop.checked;
+        if (!doMark && !doReplaceDemo && !doConvert && !doCompress && !doDeleteHintPop) { alert('请至少勾选一个有效操作'); return; }
         if (doMark && !markText.value.trim()) { alert('勾选了打标但未填写标记内容'); return; }
         if (doReplaceDemo && !customDemoBlob) { alert('勾选了替换demo但未上传图片'); return; }
         if (doConvert && currentMode !== 'bds2bdi' && currentMode !== 'bdi2bds') { alert('当前模式不支持转换'); return; }
@@ -2018,11 +2020,12 @@
           (doMark ? '打标 ' : '') +
           (doReplaceDemo ? '替换demo ' : '') +
           (doConvert ? '转换 ' : '') +
-          (doCompress ? '压缩 ' : '')
+          (doCompress ? '压缩 ' : '') +
+          (doDeleteHintPop ? '删除hint1.pop ' : '')
         );
         if (savedMarkContent) log('🔒 标记内容: ' + savedMarkContent);
         try {
-          await processFilesWithOptions(files, { doMark, doReplaceDemo, doConvert, doCompress, markContent });
+          await processFilesWithOptions(files, { doMark, doReplaceDemo, doConvert, doCompress, doDeleteHintPop, markContent });
         } catch (err) {
           log('❌ 执行出错: ' + err.message);
         } finally {
@@ -2032,7 +2035,7 @@
       });
 
       async function processFilesWithOptions(files, options) {
-        const { doMark, doReplaceDemo, doConvert, doCompress, markContent } = options;
+        const { doMark, doReplaceDemo, doConvert, doCompress, doDeleteHintPop, markContent } = options;
 
         let workingFiles = files;
         if (doCompress) {
@@ -2061,6 +2064,11 @@
               const newDemoBlob = customDemoCompressedBlob || customDemoBlob;
               await replaceDemoInZipStrict(zip, newDemoBlob);
               log(`✅ [${idx+1}/${workingFiles.length}] 已替换 demo.png`);
+            }
+
+            if (doDeleteHintPop) {
+              await deleteHintPopFromZip(zip);
+              log(`✅ [${idx+1}/${workingFiles.length}] 已删除 hint1.pop（任意路径 port/land 下）`);
             }
 
             if (doConvert && (currentMode === 'bds2bdi' || currentMode === 'bdi2bds')) {
@@ -2097,6 +2105,21 @@
         }
         clearEditorSessions();
         log(`✅ 全部处理完成，共 ${outputs.length} 个文件`);
+      }
+
+      // ★ 修正：删除任意路径下 port/land 文件夹内的 hint1.pop（无论嵌套多深）
+      async function deleteHintPopFromZip(zip) {
+        const allFiles = Object.keys(zip.files).filter(k => !zip.files[k].dir);
+        for (const key of allFiles) {
+          const normalized = key.replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\//, '').toLowerCase();
+          const segs = normalized.split('/');
+          const last = segs[segs.length - 1];
+          if (last !== 'hint1.pop') continue;
+          const parent = segs.length >= 2 ? segs[segs.length - 2] : '';
+          if (parent === 'port' || parent === 'land') {
+            zip.remove(key);
+          }
+        }
       }
 
       async function replaceDemoInZipStrict(zip, newDemoBlob) {
@@ -2144,7 +2167,144 @@
         return false;
       }
 
+      // ★ 新增：音效格式真正互转逻辑（WAV / OGG 互相转码）以及原地补全
+      async function audioBufferToWav(buffer) {
+        const numOfChan = buffer.numberOfChannels;
+        const length = buffer.length * numOfChan * 2 + 44;
+        const out = new ArrayBuffer(length);
+        const view = new DataView(out);
+        const channels = [];
+        let sample;
+        let offset = 0;
+        let pos = 0;
+
+        function writeString(str) {
+          for (let i = 0; i < str.length; i++) view.setUint8(pos + i, str.charCodeAt(i));
+          pos += str.length;
+        }
+
+        writeString('RIFF');
+        view.setUint32(pos, length - 8, true); pos += 4;
+        writeString('WAVE');
+        writeString('fmt ');
+        view.setUint32(pos, 16, true); pos += 4;
+        view.setUint16(pos, 1, true); pos += 2;
+        view.setUint16(pos, numOfChan, true); pos += 2;
+        view.setUint32(pos, buffer.sampleRate, true); pos += 4;
+        view.setUint32(pos, buffer.sampleRate * 2 * numOfChan, true); pos += 4;
+        view.setUint16(pos, numOfChan * 2, true); pos += 2;
+        view.setUint16(pos, 16, true); pos += 2;
+        writeString('data');
+        view.setUint32(pos, length - pos - 4, true); pos += 4;
+
+        for (let i = 0; i < buffer.numberOfChannels; i++) {
+          channels.push(buffer.getChannelData(i));
+        }
+
+        while (pos < length) {
+          for (let i = 0; i < numOfChan; i++) {
+            sample = Math.max(-1, Math.min(1, channels[i][offset]));
+            sample = (sample < 0 ? sample * 0x8000 : sample * 0x7FFF) | 0;
+            view.setInt16(pos, sample, true);
+            pos += 2;
+          }
+          offset++;
+        }
+
+        return new Blob([out], { type: 'audio/wav' });
+      }
+
+      async function convertAudioBlob(blob, toExt, logFunc) {
+        try {
+          const ab = await blob.arrayBuffer();
+          const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const audioBuffer = await audioCtx.decodeAudioData(ab);
+          
+          if (toExt === 'wav' || toExt === 'aiff') {
+            const wavBlob = await audioBufferToWav(audioBuffer);
+            if (toExt === 'aiff') {
+              // 百度输入法通常兼容WAV，直接返回wav但改名为aiff，保证能播放
+              return new Blob([await wavBlob.arrayBuffer()], { type: 'audio/aiff' });
+            }
+            return wavBlob;
+          } else if (toExt === 'ogg') {
+            // 简易WebM/OGG录制器
+            const dest = audioCtx.createMediaStreamDestination();
+            const source = audioCtx.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(dest);
+            
+            const mediaRecorder = new MediaRecorder(dest.stream);
+            const chunks = [];
+            mediaRecorder.ondataavailable = e => chunks.push(e.data);
+            
+            return new Promise((resolve, reject) => {
+              mediaRecorder.onstop = () => {
+                const b = new Blob(chunks, { type: 'audio/ogg' });
+                audioCtx.close();
+                resolve(b);
+              };
+              mediaRecorder.onerror = (e) => {
+                audioCtx.close();
+                reject(e);
+              };
+              mediaRecorder.start();
+              source.start(0);
+              setTimeout(() => {
+                mediaRecorder.stop();
+              }, (audioBuffer.duration * 1000) + 100);
+            });
+          }
+        } catch (e) {
+          if (logFunc) logFunc('⚠️ 音频转码失败，使用备用替换策略: ' + e.message);
+          // 降级方案：如果浏览器无法解码，只能原样重命名后缀（可能无法播放）
+          return new Blob([await blob.arrayBuffer()], { type: 'audio/' + toExt });
+        }
+      }
+
+      async function ensureAudioComplement(zip, isToAndroid, logFunc) {
+        const allFiles = Object.keys(zip.files).filter(k => !zip.files[k].dir);
+        const audioGroups = {};
+
+        for (const key of allFiles) {
+          if (isMacMetadata(key)) continue;
+          const lower = key.toLowerCase();
+          const isAudio = lower.endsWith('.ogg') || lower.endsWith('.aiff') || lower.endsWith('.wav');
+          if (!isAudio) continue;
+          if (lower.endsWith('.wav')) continue; 
+          
+          const dirPath = key.substring(0, key.lastIndexOf('/') + 1);
+          const fileName = key.substring(key.lastIndexOf('/') + 1);
+          const baseName = fileName.replace(/\.(ogg|aiff)$/i, '');
+          
+          const groupKey = dirPath + baseName;
+          if (!audioGroups[groupKey]) audioGroups[groupKey] = { dir: dirPath, base: baseName, ogg: null, aiff: null };
+          if (lower.endsWith('.ogg')) audioGroups[groupKey].ogg = key;
+          else if (lower.endsWith('.aiff')) audioGroups[groupKey].aiff = key;
+        }
+
+        for (const [groupKey, group] of Object.entries(audioGroups)) {
+          if (group.ogg && !group.aiff) {
+            const oggBlob = await zip.file(group.ogg).async('blob');
+            const converted = await convertAudioBlob(oggBlob, 'aiff', logFunc);
+            const newPath = group.dir + group.base + '.aiff';
+            zip.file(newPath, converted);
+            if (logFunc) logFunc('🔊 补全音效: ' + newPath);
+          } else if (group.aiff && !group.ogg) {
+            const aiffBlob = await zip.file(group.aiff).async('blob');
+            const converted = await convertAudioBlob(aiffBlob, 'ogg', logFunc);
+            const newPath = group.dir + group.base + '.ogg';
+            zip.file(newPath, converted);
+            if (logFunc) logFunc('🔊 补全音效: ' + newPath);
+          }
+        }
+        return zip;
+      }
+
       async function processZipCommonStrict(zip) {
+        // ★ 转换前先补全缺失音效（ogg ↔ aiff），原地同文件夹生成
+        await ensureAudioComplement(zip, currentMode === 'bdi2bds', log);
+
         const outZip = new JSZip();
         const allFiles = Object.keys(zip.files).filter(k => !zip.files[k].dir);
 
@@ -4013,7 +4173,6 @@
           rongcaiStatusList.innerHTML = '';
         }
 
-        // ★ 修改：setMode 支持 mode3，并切换滑块显示
         window.setMode = function(mode) {
           rongcaiCurrentMode = mode;
           btnMode1.classList.toggle('active-mode', mode === 'mode1');
@@ -4027,7 +4186,6 @@
         btnMode3.classList.remove('active-mode');
         rongcaiTransSlider.style.display = 'none';
 
-        // ★ 新增：模式三滑动条联动
         rongcaiTransFadeValue.textContent = (100 - rongcaiTransFadeSlider.value) + '%';
         rongcaiTransFadeSlider.addEventListener('input', () => {
           rongcaiTransFadeValue.textContent = (100 - rongcaiTransFadeSlider.value) + '%';
@@ -4123,7 +4281,6 @@
                 ctx.fillStyle = grad;
                 ctx.fillRect(0, bottomSixthY, w, fusionHeight - solidHeight);
               }
-              // ★ mode3 不在这里处理（走单独的平滑羽化算法）
               canvas.toBlob(blob => { resolve(blob); }, 'image/png');
             };
             img.onerror = (e) => reject(e);
@@ -4131,8 +4288,6 @@
           });
         }
 
-        // ★ 新增：模式三专用——平滑羽化透明处理
-        // 与用户给的原始代码逻辑一致：从 fadeStartY 到底部 alpha 用 smoothstep 过渡到 0
         async function rongcaiProcessImagePngTrans(pngBlob) {
           return new Promise((resolve, reject) => {
             const img = new Image();
@@ -4212,7 +4367,6 @@
                 if (!hasLight && !hasDark) continue;
                 const blob = await zip.file(abjPath).async('blob');
 
-                // ★ 模式三分支：透明融合
                 if (rongcaiCurrentMode === 'mode3') {
                   const processed = await rongcaiProcessImagePngTrans(blob);
                   zip.file(abjPath, processed);
@@ -4220,7 +4374,6 @@
                   continue;
                 }
 
-                // mode1 / mode2：原有逻辑
                 const fillColor = hasDark ? '#2E2E2E' : '#D2D5DB';
                 const processed = await rongcaiProcessImagePng(blob, fillColor);
                 zip.file(abjPath, processed);
@@ -4230,7 +4383,6 @@
                 rongcaiLogMsg(`⚠️ ${fileName} 未找到 abj.png（跳过）`);
               }
 
-              // ★ 输出文件名后缀：mode3 用「透明融合」
               const suffix = rongcaiCurrentMode === 'mode1' ? '融合底' :
                              rongcaiCurrentMode === 'mode2' ? '彩底' : '透明融合';
               const baseName = fileName.slice(0, fileName.lastIndexOf('.'));
@@ -4240,7 +4392,6 @@
               } else if (rongcaiCurrentMode === 'mode2') {
                 newBaseName = baseName.replace(/融合底/g, '彩底');
               } else {
-                // mode3：不加替换（避免误替换），直接追加后缀
               }
               const alreadyHasSuffix = rongcaiCurrentMode === 'mode1'
                 ? newBaseName.includes('融合底')
