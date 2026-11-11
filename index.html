@@ -3091,7 +3091,6 @@
         log('✅ 音效转换完成，转换 ' + totalConverted + ' 个');
       });
 
-      // ★ 音效包上传
       audioReplaceArea.addEventListener('click', () => {
         audioReplaceInput.click();
       });
@@ -3117,8 +3116,11 @@
         if (!supported) { alert('请上传 .zip / .bdi / .bds 格式的音效包'); return; }
         audioReplaceZipBlob = supported;
         try {
-          const buffer = await supported.arrayBuffer();
-          const zip = await JSZip.loadAsync(buffer);
+          // 核心修复：音效包本身也可能是加密的，必须在此处先自动解密！
+          const rawBuffer = await supported.arrayBuffer();
+          const decryptRes = await autoDecryptBuffer(rawBuffer, supported.name);
+          
+          const zip = await JSZip.loadAsync(decryptRes.buffer);
           const audioFiles = [];
           for (const key of Object.keys(zip.files)) {
             const entry = zip.files[key];
@@ -3147,12 +3149,11 @@
         log('↩️ 已清除音效包');
       });
 
-      // ★ 暴力全量替换音效：强行把音效包里的所有音频（包括缺的aiff/ogg）塞进日间和夜间的res目录（绝对不碰land）
+      // ★ 暴力全量替换音效：强行把音效包里的所有音频塞进日间和夜间的res目录（绝对不碰land）
       async function replaceAudioInSkin(zip, audioFiles, originalFileName) {
         const outZip = new JSZip();
         const allFiles = Object.keys(zip.files).filter(k => !zip.files[k].dir);
 
-        // 1. 整理音效包，按基础名去重
         const audioGroups = {};
         for (const af of audioFiles) {
           const baseName = af.name.replace(/\.(ogg|aiff|wav)$/i, '');
@@ -3163,7 +3164,6 @@
           else if (lower.endsWith('.wav') && !audioGroups[baseName].wav) audioGroups[baseName].wav = af;
         }
 
-        // 2. 获取每个基础名的具体文件数据，并自动补齐缺失的格式
         const preparedAudio = {};
         for (const [baseName, group] of Object.entries(audioGroups)) {
           const entry = { ogg: null, aiff: null, wav: null };
@@ -3185,7 +3185,6 @@
           preparedAudio[baseName] = entry;
         }
 
-        // 3. 遍历皮肤包，遇到同名基础名的音频文件，直接覆盖
         for (const key of allFiles) {
           const entry = zip.files[key];
           const originPath = key.replace(/^\.\//, '').replace(/^\//, '');
@@ -3206,7 +3205,6 @@
           outZip.file(key, data);
         }
 
-        // 4. 寻找日间(light)和夜间(dark)的res目录（绝对不碰land）
         const findResDir = (tag) => {
           for (const k of allFiles) {
             const lower = k.toLowerCase();
@@ -3232,7 +3230,6 @@
         } else if (!lightAudioDir && darkAudioDir) { lightAudioDir = darkAudioDir.replace('/dark/', '/light/'); } 
         else if (darkAudioDir && !lightAudioDir) { darkAudioDir = lightAudioDir.replace('/light/', '/dark/'); }
 
-        // 5. 核心【暴力】逻辑：强行把音效包里的 .ogg 和 .aiff 塞进日间和夜间的 res 目录，不管原包有没有！
         for (const [baseName, prep] of Object.entries(preparedAudio)) {
           if (prep.ogg && lightAudioDir) outZip.file(lightAudioDir + baseName + '.ogg', prep.ogg);
           if (prep.aiff && lightAudioDir) outZip.file(lightAudioDir + baseName + '.aiff', prep.aiff);
@@ -3255,8 +3252,18 @@
         replaceAudioBtn.textContent = '⏳ 替换中...';
         clearLog();
         log('🔊 开始音效替换');
-        if (filesToProcess.length === 1) {
-          const file = filesToProcess[0];
+        
+        // 替换前先检测解密
+        const decryptedProcessed = await autoDecryptFileList(filesToProcess, '音效替换池');
+        if (decryptedProcessed.decryptedCount > 0) {
+           maybeShowDecryptToast(decryptedProcessed, filesToProcess.length);
+           log('🔓 已自动解密 ' + decryptedProcessed.decryptedCount + ' 个加密皮肤包，准备处理...');
+        }
+
+        const targetFiles = decryptedProcessed.files;
+        
+        if (targetFiles.length === 1) {
+          const file = targetFiles[0];
           try {
             const ab = await file.arrayBuffer();
             const zip = await JSZip.loadAsync(ab);
@@ -3286,8 +3293,8 @@
           return;
         }
         const resultZip = new JSZip();
-        for (let idx = 0; idx < filesToProcess.length; idx++) {
-          const file = filesToProcess[idx];
+        for (let idx = 0; idx < targetFiles.length; idx++) {
+          const file = targetFiles[idx];
           try {
             const ab = await file.arrayBuffer();
             const zip = await JSZip.loadAsync(ab);
@@ -3302,13 +3309,13 @@
             }
             const timeStampedName = applyTimeStampToName(finalFile.name);
             resultZip.file(timeStampedName, finalFile);
-            log('✅ [' + (idx + 1) + '/' + filesToProcess.length + '] 替换成功: ' + timeStampedName);
+            log('✅ [' + (idx + 1) + '/' + targetFiles.length + '] 替换成功: ' + timeStampedName);
           } catch (err) {
-            log('❌ [' + (idx + 1) + '/' + filesToProcess.length + '] ' + file.name + ' 失败: ' + err.message);
+            log('❌ [' + (idx + 1) + '/' + targetFiles.length + '] ' + file.name + ' 失败: ' + err.message);
           }
         }
         const outBlob = await resultZip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
-        const outZipName = '音效替换_' + filesToProcess.length + '个文件.zip';
+        const outZipName = '音效替换_' + targetFiles.length + '个文件.zip';
         saveAs(outBlob, outZipName);
         setSharedFiles([new File([outBlob], outZipName)], '批量音效替换');
         clearEditorSessions();
