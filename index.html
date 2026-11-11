@@ -273,7 +273,6 @@
     .action-btn.rongcai { background: #8a5a7a; color: white; }
     .action-btn.rongcai:hover:not(:disabled) { background: #6a4a5a; }
     .rongcai-badge { background: #8a5a7a; color: white; }
-    /* ★ 新增：模式三按钮样式 */
     .mode-btn.mode-btn-trans.active-mode { background: #00b894; }
     .mode-btn.mode-btn-trans.active-mode:hover { background: #009e7f; }
     .rongcai-trans-slider { display: flex; align-items: center; gap: 12px;
@@ -454,9 +453,9 @@
 
       <div id="audioReplaceArea" class="audio-replace-area" style="display:none;">
         <div class="upload-icon">🎵</div>
-        <div class="upload-text">点击或拖拽上传音效包 (含 .aiff / .ogg)</div>
-        <div class="upload-hint">支持 .zip 格式，内含音效文件</div>
-        <input type="file" id="audioReplaceInput" accept=".zip" style="display:none;">
+        <div class="upload-text">点击或拖拽上传音效包 (支持 .zip / .bdi / .bds)</div>
+        <div class="upload-hint">内含 .aiff / .ogg 音效文件</div>
+        <input type="file" id="audioReplaceInput" style="display:none;">
       </div>
       <div id="audioReplaceStatus" class="audio-replace-status" style="display: none;">
         <span class="file-name" id="audioReplaceName">未命名</span>
@@ -619,14 +618,14 @@
     <div class="section" id="sectionRongcai">
       <div id="modePanel">
         <strong>请选择加工模式：</strong><br>
-        <button class="mode-btn active-mode" id="btnMode1" onclick="setMode('mode1')">模式一：彩底转融合底</button>
+        <button class="mode-btn" id="btnMode1" onclick="setMode('mode1')">模式一：彩底转融合底</button>
         <br>
         <button class="mode-btn" id="btnMode2" onclick="setMode('mode2')">模式二：融合底转彩底</button>
         <br>
-        <button class="mode-btn mode-btn-trans" id="btnMode3" onclick="setMode('mode3')">模式三：彩底转融合底二★透明融合</button>
+        <button class="mode-btn mode-btn-trans active-mode" id="btnMode3" onclick="setMode('mode3')">模式三：彩底转融合底二★透明融合</button>
       </div>
 
-      <div class="rongcai-trans-slider" id="rongcaiTransSlider" style="display:none;">
+      <div class="rongcai-trans-slider" id="rongcaiTransSlider">
         <label>羽化起始位置(底部往上)：</label>
         <input type="range" id="rongcaiTransFadeSlider" min="50" max="95" value="85" step="1">
         <span class="val" id="rongcaiTransFadeValue">15%</span>
@@ -2107,7 +2106,6 @@
         log(`✅ 全部处理完成，共 ${outputs.length} 个文件`);
       }
 
-      // ★ 修正：删除任意路径下 port/land 文件夹内的 hint1.pop（无论嵌套多深）
       async function deleteHintPopFromZip(zip) {
         const allFiles = Object.keys(zip.files).filter(k => !zip.files[k].dir);
         for (const key of allFiles) {
@@ -2167,7 +2165,6 @@
         return false;
       }
 
-      // ★ 新增：音效格式真正互转逻辑（WAV / OGG 互相转码）以及原地补全
       async function audioBufferToWav(buffer) {
         const numOfChan = buffer.numberOfChannels;
         const length = buffer.length * numOfChan * 2 + 44;
@@ -2223,12 +2220,10 @@
           if (toExt === 'wav' || toExt === 'aiff') {
             const wavBlob = await audioBufferToWav(audioBuffer);
             if (toExt === 'aiff') {
-              // 百度输入法通常兼容WAV，直接返回wav但改名为aiff，保证能播放
               return new Blob([await wavBlob.arrayBuffer()], { type: 'audio/aiff' });
             }
             return wavBlob;
           } else if (toExt === 'ogg') {
-            // 简易WebM/OGG录制器
             const dest = audioCtx.createMediaStreamDestination();
             const source = audioCtx.createBufferSource();
             source.buffer = audioBuffer;
@@ -2257,7 +2252,6 @@
           }
         } catch (e) {
           if (logFunc) logFunc('⚠️ 音频转码失败，使用备用替换策略: ' + e.message);
-          // 降级方案：如果浏览器无法解码，只能原样重命名后缀（可能无法播放）
           return new Blob([await blob.arrayBuffer()], { type: 'audio/' + toExt });
         }
       }
@@ -2302,7 +2296,6 @@
       }
 
       async function processZipCommonStrict(zip) {
-        // ★ 转换前先补全缺失音效（ogg ↔ aiff），原地同文件夹生成
         await ensureAudioComplement(zip, currentMode === 'bdi2bds', log);
 
         const outZip = new JSZip();
@@ -2984,18 +2977,66 @@
             const ab = await file.arrayBuffer();
             const zip = await JSZip.loadAsync(ab);
             let count = 0;
+            const audioEntries = [];
             for (const key of Object.keys(zip.files)) {
               const entry = zip.files[key];
               if (entry.dir) continue;
               const lower = key.toLowerCase();
               if (lower.endsWith('.ogg') || lower.endsWith('.aiff') || lower.endsWith('.wav')) {
-                const blob = await entry.async('blob');
-                const name = key.split('/').pop();
-                resultZip.file(name, blob);
-                count++;
-                totalAudio++;
+                audioEntries.push({ key, entry, lower, name: key.split('/').pop() });
               }
             }
+            const groups = {};
+            for (const ae of audioEntries) {
+              const baseName = ae.name.replace(/\.(ogg|aiff|wav)$/i, '');
+              if (!groups[baseName]) groups[baseName] = { ogg: null, aiff: null, wav: null };
+              if (ae.lower.endsWith('.ogg')) groups[baseName].ogg = ae;
+              else if (ae.lower.endsWith('.aiff')) groups[baseName].aiff = ae;
+              else if (ae.lower.endsWith('.wav')) groups[baseName].wav = ae;
+            }
+
+            for (const [baseName, group] of Object.entries(groups)) {
+              if (group.ogg) {
+                const blob = await group.ogg.entry.async('blob');
+                const name = group.ogg.name;
+                resultZip.file(name, blob);
+                count++;
+                if (!group.aiff) {
+                  try {
+                    const converted = await convertAudioBlob(blob, 'aiff', log);
+                    const newName = name.replace(/\.ogg$/i, '.aiff');
+                    resultZip.file(newName, converted);
+                    count++;
+                    log('🔄 自动生成: ' + newName);
+                  } catch (e) {
+                    log('⚠️ 生成aiff失败: ' + e.message);
+                  }
+                }
+              }
+              if (group.aiff) {
+                const blob = await group.aiff.entry.async('blob');
+                const name = group.aiff.name;
+                resultZip.file(name, blob);
+                count++;
+                if (!group.ogg) {
+                  try {
+                    const converted = await convertAudioBlob(blob, 'ogg', log);
+                    const newName = name.replace(/\.aiff$/i, '.ogg');
+                    resultZip.file(newName, converted);
+                    count++;
+                    log('🔄 自动生成: ' + newName);
+                  } catch (e) {
+                    log('⚠️ 生成ogg失败: ' + e.message);
+                  }
+                }
+              }
+              if (group.wav) {
+                const blob = await group.wav.entry.async('blob');
+                resultZip.file(group.wav.name, blob);
+                count++;
+              }
+            }
+            totalAudio += count;
             log('✅ [' + (idx + 1) + '/' + filesToProcess.length + '] ' + file.name + ' 提取到 ' + count + ' 个音效');
           } catch (err) {
             log('❌ [' + (idx + 1) + '/' + filesToProcess.length + '] ' + file.name + ' 失败: ' + err.message);
@@ -3050,7 +3091,10 @@
         log('✅ 音效转换完成，转换 ' + totalConverted + ' 个');
       });
 
-      audioReplaceArea.addEventListener('click', () => audioReplaceInput.click());
+      // ★ 音效包上传
+      audioReplaceArea.addEventListener('click', () => {
+        audioReplaceInput.click();
+      });
       audioReplaceArea.addEventListener('dragover', (e) => { e.preventDefault(); audioReplaceArea.classList.add('dragover'); });
       audioReplaceArea.addEventListener('dragleave', () => audioReplaceArea.classList.remove('dragover'));
       audioReplaceArea.addEventListener('drop', (e) => {
@@ -3063,32 +3107,36 @@
         audioReplaceInput.value = '';
       });
 
-      function handleAudioReplaceFiles(fileList) {
+      async function handleAudioReplaceFiles(fileList) {
         const files = Array.from(fileList);
         if (files.length === 0) return;
-        const zipFile = files.find(f => f.name.toLowerCase().endsWith('.zip'));
-        if (!zipFile) { alert('请上传 .zip 格式的音效包'); return; }
-        audioReplaceZipBlob = zipFile;
-        zipFile.arrayBuffer().then(async (buffer) => {
-          try {
-            const zip = await JSZip.loadAsync(buffer);
-            const audioFiles = [];
-            for (const key of Object.keys(zip.files)) {
-              const entry = zip.files[key];
-              if (entry.dir) continue;
-              const name = key.split('/').pop();
-              const lower = name.toLowerCase();
-              if (lower.endsWith('.aiff') || lower.endsWith('.ogg')) audioFiles.push({ name: name, entry: entry });
-            }
-            if (audioFiles.length === 0) { alert('音效包中未找到 .aiff 或 .ogg 文件'); return; }
-            audioReplaceFiles = audioFiles;
-            audioReplaceStatus.style.display = 'flex';
-            audioReplaceName.textContent = zipFile.name;
-            audioReplaceCount.textContent = audioFiles.length + ' 个音效';
-            replaceAudioBtn.disabled = (currentMode !== 'audioReplace' || selectedFiles.length === 0);
-            log('✅ 音效包加载成功: ' + audioFiles.length + ' 个音效文件');
-          } catch (err) { alert('音效包解析失败: ' + err.message); }
+        const supported = files.find(f => {
+          const ext = f.name.split('.').pop().toLowerCase();
+          return ['zip', 'bdi', 'bds'].includes(ext);
         });
+        if (!supported) { alert('请上传 .zip / .bdi / .bds 格式的音效包'); return; }
+        audioReplaceZipBlob = supported;
+        try {
+          const buffer = await supported.arrayBuffer();
+          const zip = await JSZip.loadAsync(buffer);
+          const audioFiles = [];
+          for (const key of Object.keys(zip.files)) {
+            const entry = zip.files[key];
+            if (entry.dir) continue;
+            const name = key.split('/').pop();
+            const lower = name.toLowerCase();
+            if (lower.endsWith('.aiff') || lower.endsWith('.ogg') || lower.endsWith('.wav')) {
+              audioFiles.push({ name: name, entry: entry, key: key });
+            }
+          }
+          if (audioFiles.length === 0) { alert('音效包中未找到 .aiff / .ogg / .wav 文件'); return; }
+          audioReplaceFiles = audioFiles;
+          audioReplaceStatus.style.display = 'flex';
+          audioReplaceName.textContent = supported.name;
+          audioReplaceCount.textContent = audioFiles.length + ' 个音效';
+          replaceAudioBtn.disabled = (currentMode !== 'audioReplace' || selectedFiles.length === 0);
+          log('✅ 音效包加载成功: ' + audioFiles.length + ' 个音效文件 (' + supported.name + ')');
+        } catch (err) { alert('音效包解析失败: ' + err.message); }
       }
 
       clearAudioReplaceBtn.addEventListener('click', function() {
@@ -3099,31 +3147,102 @@
         log('↩️ 已清除音效包');
       });
 
+      // ★ 暴力全量替换音效：强行把音效包里的所有音频（包括缺的aiff/ogg）塞进日间和夜间的res目录（绝对不碰land）
       async function replaceAudioInSkin(zip, audioFiles, originalFileName) {
         const outZip = new JSZip();
-        const allFiles = Object.keys(zip.files);
-        const audioMap = {};
+        const allFiles = Object.keys(zip.files).filter(k => !zip.files[k].dir);
+
+        // 1. 整理音效包，按基础名去重
+        const audioGroups = {};
         for (const af of audioFiles) {
-          const blob = await af.entry.async('blob');
-          audioMap[af.name.toLowerCase()] = blob;
+          const baseName = af.name.replace(/\.(ogg|aiff|wav)$/i, '');
+          if (!audioGroups[baseName]) audioGroups[baseName] = { ogg: null, aiff: null, wav: null };
+          const lower = af.name.toLowerCase();
+          if (lower.endsWith('.ogg') && !audioGroups[baseName].ogg) audioGroups[baseName].ogg = af;
+          else if (lower.endsWith('.aiff') && !audioGroups[baseName].aiff) audioGroups[baseName].aiff = af;
+          else if (lower.endsWith('.wav') && !audioGroups[baseName].wav) audioGroups[baseName].wav = af;
         }
+
+        // 2. 获取每个基础名的具体文件数据，并自动补齐缺失的格式
+        const preparedAudio = {};
+        for (const [baseName, group] of Object.entries(audioGroups)) {
+          const entry = { ogg: null, aiff: null, wav: null };
+          if (group.ogg) {
+            const blob = await group.ogg.entry.async('blob');
+            entry.ogg = blob;
+            if (!group.aiff) {
+              try { entry.aiff = await convertAudioBlob(blob, 'aiff', log); } catch (e) { log('⚠️ 生成aiff失败: ' + e.message); }
+            }
+          }
+          if (group.aiff) {
+            const blob = await group.aiff.entry.async('blob');
+            entry.aiff = blob;
+            if (!group.ogg) {
+              try { entry.ogg = await convertAudioBlob(blob, 'ogg', log); } catch (e) { log('⚠️ 生成ogg失败: ' + e.message); }
+            }
+          }
+          if (group.wav) { entry.wav = await group.wav.entry.async('blob'); }
+          preparedAudio[baseName] = entry;
+        }
+
+        // 3. 遍历皮肤包，遇到同名基础名的音频文件，直接覆盖
         for (const key of allFiles) {
           const entry = zip.files[key];
-          if (entry.dir) continue;
           const originPath = key.replace(/^\.\//, '').replace(/^\//, '');
           const fileName = originPath.split('/').pop();
           const lowerFileName = fileName.toLowerCase();
           const isAudio = lowerFileName.endsWith('.aiff') || lowerFileName.endsWith('.ogg') || lowerFileName.endsWith('.wav');
+          
           if (isAudio) {
-            const matchedKey = audioMap[lowerFileName];
-            if (matchedKey) {
-              outZip.file(key, matchedKey);
-              continue;
+            const baseName = fileName.replace(/\.(ogg|aiff|wav)$/i, '');
+            const prep = preparedAudio[baseName];
+            if (prep) {
+              if (lowerFileName.endsWith('.ogg') && prep.ogg) { outZip.file(key, prep.ogg); continue; } 
+              else if (lowerFileName.endsWith('.aiff') && prep.aiff) { outZip.file(key, prep.aiff); continue; } 
+              else if (lowerFileName.endsWith('.wav') && prep.wav) { outZip.file(key, prep.wav); continue; }
             }
           }
           const data = await entry.async('blob');
           outZip.file(key, data);
         }
+
+        // 4. 寻找日间(light)和夜间(dark)的res目录（绝对不碰land）
+        const findResDir = (tag) => {
+          for (const k of allFiles) {
+            const lower = k.toLowerCase();
+            const segs = lower.split('/');
+            const idx = segs.indexOf(tag);
+            if (idx >= 0) {
+              const resIdx = segs.indexOf('res', idx);
+              if (resIdx >= 0) {
+                return k.split('/').slice(0, resIdx + 1).join('/') + '/';
+              }
+            }
+          }
+          return null;
+        };
+
+        let lightAudioDir = findResDir('light');
+        let darkAudioDir = findResDir('dark');
+
+        if (!lightAudioDir && !darkAudioDir) {
+          const hasSkinPrefix = allFiles.some(k => k.toLowerCase().startsWith('skin/'));
+          if (hasSkinPrefix) { lightAudioDir = 'skin/light/skin/res/'; darkAudioDir = 'skin/dark/skin/res/'; } 
+          else { lightAudioDir = 'light/res/'; darkAudioDir = 'dark/res/'; }
+        } else if (!lightAudioDir && darkAudioDir) { lightAudioDir = darkAudioDir.replace('/dark/', '/light/'); } 
+        else if (darkAudioDir && !lightAudioDir) { darkAudioDir = lightAudioDir.replace('/light/', '/dark/'); }
+
+        // 5. 核心【暴力】逻辑：强行把音效包里的 .ogg 和 .aiff 塞进日间和夜间的 res 目录，不管原包有没有！
+        for (const [baseName, prep] of Object.entries(preparedAudio)) {
+          if (prep.ogg && lightAudioDir) outZip.file(lightAudioDir + baseName + '.ogg', prep.ogg);
+          if (prep.aiff && lightAudioDir) outZip.file(lightAudioDir + baseName + '.aiff', prep.aiff);
+          if (prep.wav && lightAudioDir) outZip.file(lightAudioDir + baseName + '.wav', prep.wav);
+
+          if (prep.ogg && darkAudioDir) outZip.file(darkAudioDir + baseName + '.ogg', prep.ogg);
+          if (prep.aiff && darkAudioDir) outZip.file(darkAudioDir + baseName + '.aiff', prep.aiff);
+          if (prep.wav && darkAudioDir) outZip.file(darkAudioDir + baseName + '.wav', prep.wav);
+        }
+
         return outZip;
       }
 
@@ -3131,7 +3250,7 @@
         await flushEditorToFiles();
         const filesToProcess = getFilesToProcess();
         if (!filesToProcess || filesToProcess.length === 0) { alert('请先上传皮肤包文件'); return; }
-        if (audioReplaceFiles.length === 0) { alert('请先上传音效包 (.zip)'); return; }
+        if (audioReplaceFiles.length === 0) { alert('请先上传音效包 (.zip/.bdi/.bds)'); return; }
         replaceAudioBtn.disabled = true;
         replaceAudioBtn.textContent = '⏳ 替换中...';
         clearLog();
@@ -4154,7 +4273,7 @@
         let rongcaiSourceZips = [];
         let rongcaiOutputZips = [];
         let rongcaiOutputNames = [];
-        let rongcaiCurrentMode = 'mode1';
+        let rongcaiCurrentMode = 'mode3';
 
         function rongcaiLogMsg(str) {
           rongcaiLog.innerText += str + "\n";
@@ -4181,10 +4300,10 @@
           rongcaiTransSlider.style.display = (mode === 'mode3') ? 'flex' : 'none';
         };
 
-        btnMode1.classList.add('active-mode');
+        btnMode1.classList.remove('active-mode');
         btnMode2.classList.remove('active-mode');
-        btnMode3.classList.remove('active-mode');
-        rongcaiTransSlider.style.display = 'none';
+        btnMode3.classList.add('active-mode');
+        rongcaiTransSlider.style.display = 'flex';
 
         rongcaiTransFadeValue.textContent = (100 - rongcaiTransFadeSlider.value) + '%';
         rongcaiTransFadeSlider.addEventListener('input', () => {
@@ -4384,20 +4503,21 @@
               }
 
               const suffix = rongcaiCurrentMode === 'mode1' ? '融合底' :
-                             rongcaiCurrentMode === 'mode2' ? '彩底' : '透明融合';
+                             rongcaiCurrentMode === 'mode2' ? '彩底' : '融合';
               const baseName = fileName.slice(0, fileName.lastIndexOf('.'));
               let newBaseName = baseName;
               if (rongcaiCurrentMode === 'mode1') {
                 newBaseName = baseName.replace(/彩底/g, '融合底');
               } else if (rongcaiCurrentMode === 'mode2') {
-                newBaseName = baseName.replace(/融合底/g, '彩底');
+                newBaseName = baseName.replace(/融合底|融合/g, '彩底');
               } else {
+                newBaseName = baseName.replace(/彩底/g, '融合');
               }
               const alreadyHasSuffix = rongcaiCurrentMode === 'mode1'
                 ? newBaseName.includes('融合底')
                 : rongcaiCurrentMode === 'mode2'
                   ? newBaseName.includes('彩底')
-                  : newBaseName.includes('透明融合');
+                  : newBaseName.includes('融合');
               let outputName;
               if (alreadyHasSuffix) {
                 outputName = `${newBaseName}.${ext}`;
