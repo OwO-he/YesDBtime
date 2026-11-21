@@ -7,6 +7,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/upng-js@2.1.0/UPNG.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@wasm-audio-decoders/ogg-vorbis@0.1.20/dist/ogg-vorbis-decoder.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -139,12 +140,27 @@
     .action-btn.decrypt-btn:hover:not(:disabled) { background: #9a7a1e; }
     .action-btn.replace-audio { background: #8e6b4a; color: white; }
     .action-btn.replace-audio:hover:not(:disabled) { background: #7a5a3a; }
+    .action-btn.genaudio { background: #2a7a6e; color: white; }
+    .action-btn.genaudio:hover:not(:disabled) { background: #1f5f55; }
     .log-box { margin-top: 12px; background: var(--bg-log); border-radius: 16px;
       padding: 10px 16px; font-size: 13px; color: var(--text-primary); max-height: 200px;
       overflow-y: auto; border: 1px solid var(--border-subtle);
       font-family: 'SF Mono', 'Menlo', monospace; white-space: pre-wrap;
       word-break: break-word; transition: background 0.3s, color 0.3s, border 0.3s; }
     .log-box:empty { display: none; }
+    /* 主日志栏悬浮：固定在屏幕底部，两列排布更紧凑 */
+    #logBox { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%);
+      width: calc(100% - 20px); max-width: 700px; max-height: 16vh; margin-top: 0;
+      padding: 6px 14px; font-size: 12px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; align-items: start; align-content: start;
+      z-index: 1500; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.28); }
+    #logBox:empty { display: none; }
+    #logFloatBtn { position: fixed; right: 14px; bottom: 18px; z-index: 1600;
+      width: 40px; height: 40px; border-radius: 50%; border: none; cursor: pointer;
+      background: #2e3b4e; color: #fff; font-size: 16px; line-height: 1;
+      display: none; align-items: center; justify-content: center; padding: 0;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3); transition: background 0.2s; }
+    #logFloatBtn:hover { background: #4a5a72; }
     .footnote { font-size: 13px; color: var(--text-light); text-align: center;
       margin-top: 12px; border-top: 1px solid var(--border-subtle);
       padding-top: 10px; transition: color 0.3s, border 0.3s; }
@@ -158,10 +174,12 @@
     .audio-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px;
       padding: 8px 4px; border-top: 1px solid var(--border-subtle); }
     .audio-row .action-btn { flex: 0 1 auto; min-width: 140px; padding: 10px 18px; font-size: 14px; }
-    .audio-direction { display: flex; gap: 8px; align-items: center; margin-left: 4px; }
+    .audio-direction { display: flex; gap: 8px; align-items: center; margin-left: 4px;
+      flex-wrap: wrap; max-width: 100%; min-width: 0; }
     .audio-direction select { padding: 6px 12px; border-radius: 40px;
       border: 1px solid var(--border-subtle); background: var(--bg-card); font-size: 14px;
-      outline: none; color: var(--text-primary); transition: background 0.3s, border 0.3s, color 0.3s; }
+      outline: none; color: var(--text-primary); transition: background 0.3s, border 0.3s, color 0.3s;
+      max-width: 100%; min-width: 0; }
     .audio-direction select:focus { border-color: var(--color-accent); }
     .compress-options { display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
       margin: 8px 0; padding: 10px 16px; background: var(--bg-compress-options);
@@ -246,6 +264,18 @@
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px; }
     .audio-replace-status .badge { background: #4a8e6b; color: var(--text-white);
       border-radius: 40px; padding: 3px 12px; font-size: 13px; font-weight: 500; }
+    .audio-gen-list { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 8px; }
+    .audio-gen-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+      background: var(--bg-card); border: 1.5px solid var(--border-subtle); border-radius: 12px;
+      font-size: 13px; cursor: pointer; word-break: break-all;
+      transition: border 0.2s, background 0.2s; }
+    .audio-gen-item.selected { border-color: var(--color-accent); background: var(--bg-subtle); }
+    .audio-gen-item .gen-play { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%;
+      border: none; background: #4a9eff; color: #fff; font-size: 12px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; padding: 0; }
+    .audio-gen-item .gen-play.playing { background: #e07a00; }
+    .audio-gen-item .gen-file { flex: 1 1 auto; min-width: 0; color: var(--text-primary); }
+    .audio-gen-item .gen-name { flex: 0 0 auto; font-weight: 600; color: #4a8e6b; white-space: nowrap; }
     .operation-options { display: flex; flex-wrap: wrap; gap: 16px 24px; margin: 10px 0 14px;
       padding: 12px 16px; background: var(--bg-compress-options); border-radius: 12px;
       border: 1px solid var(--border-subtle); transition: background 0.3s, border 0.3s; }
@@ -257,6 +287,8 @@
       .card { padding: 16px; } .row-label { min-width: 60px; }
       .action-btn { min-width: 100px; font-size: 14px; padding: 10px 16px; }
       .main-tab { min-width: 60px; font-size: 12px; padding: 8px 0; }
+      .audio-direction { flex: 1 1 100%; margin-left: 0; }
+      .audio-direction select { flex: 1 1 auto; }
     }
     #modePanel { border: 1px solid var(--border-subtle); border-radius: 10px; padding: 10px;
       background: var(--bg-card); margin-bottom: 15px; }
@@ -407,8 +439,7 @@
     @keyframes toastIn { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes toastOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-12px); } }
   </style>
-</head>
-<body>
+</head><body>
   <div class="toast-container" id="toastContainer"></div>
   <div class="card">
     <h1>⌨️ 自动解密★百度输入法工具</h1>
@@ -432,8 +463,10 @@
         <button class="mode-tab" data-mode="audioExtract">🎵 提取音效</button>
         <button class="mode-tab" data-mode="audioConvert">🔄 音效转换</button>
         <button class="mode-tab" data-mode="audioReplace">🔊 替换音效</button>
+        <button class="mode-tab" data-mode="audioGen">🎼 生成aj音效</button>
       </div>
 
+      <!-- 区域一：皮肤包导入区，无论是哪个模式永远显示 -->
       <div class="upload-area" id="dropZone">
         <div class="upload-icon" id="uploadIcon">📂</div>
         <div class="upload-text" id="uploadText">点击或拖拽上传皮肤包</div>
@@ -462,6 +495,20 @@
         <span class="badge" id="audioReplaceCount">0 个音效</span>
         <span class="clear-demo" id="clearAudioReplaceBtn" style="cursor:pointer;">✕</span>
       </div>
+
+      <!-- 区域二：直接导入音频或ZIP音频包（选了生成模式就显示） -->
+      <div id="audioGenArea" class="audio-replace-area" style="display:none;">
+        <div class="upload-icon">🎼</div>
+        <div class="upload-text">点击或拖拽上传音频文件或音频包 (可多选)</div>
+        <div class="upload-hint">支持单独音频 .mp3 / .wav / .ogg / .aiff / .m4a / .flac / .aac 或 .zip 音频包</div>
+        <input type="file" id="audioGenInput" multiple style="display:none;">
+      </div>
+      <div id="audioGenStatus" class="audio-replace-status" style="display: none;">
+        <span class="file-name" id="audioGenName">未命名</span>
+        <span class="badge" id="audioGenCount">0 个音频</span>
+        <span class="clear-demo" id="clearAudioGenBtn" style="cursor:pointer;">✕</span>
+      </div>
+      <div id="audioGenList" class="audio-gen-list" style="display:none;"></div>
 
       <div class="progress-container" id="progressContainer">
         <div class="progress-bar" id="progressBar">0%</div>
@@ -516,6 +563,7 @@
         <button class="action-btn secondary" id="replaceDemoOnlyBtn" disabled>🖼️ 仅替换demo.png</button>
         <button class="action-btn secondary" id="downloadCompressedBtn" disabled>💾 下载压缩后文件</button>
         <button class="action-btn replace-audio" id="replaceAudioBtn" disabled>🔊 替换音效并下载</button>
+        <button class="action-btn genaudio" id="genAudioBtn" style="display:none;" disabled>🎼 生成aj音效并下载</button>
       </div>
 
       <div class="action-row" style="margin-top: 8px;">
@@ -525,6 +573,10 @@
       <div class="audio-row" id="audioRow">
         <button class="action-btn audio" id="extractAudioBtn" disabled>🎵 提取所有音效</button>
         <div class="audio-direction">
+          <select id="convertModeSelect">
+            <option value="fast">⚡ 快速模式（只改后缀）</option>
+            <option value="full">🔬 完整转换（真转码）</option>
+          </select>
           <select id="audioConvertDirection">
             <option value="aiff2ogg">🎵 AIFF → OGG</option>
             <option value="ogg2aiff">🎵 OGG → AIFF</option>
@@ -620,7 +672,7 @@
         <strong>请选择加工模式：</strong><br>
         <button class="mode-btn" id="btnMode1" onclick="setMode('mode1')">模式一：彩底转融合底</button>
         <br>
-        <button class="mode-btn" id="btnMode2" onclick="setMode('mode2')">模式二：融合底转彩底</button>
+        <button class="mode-btn" id="btnMode2" onclick="setMode('mode2')">融合底转彩底</button>
         <br>
         <button class="mode-btn mode-btn-trans active-mode" id="btnMode3" onclick="setMode('mode3')">模式三：彩底转融合底二★透明融合</button>
       </div>
@@ -677,12 +729,43 @@
       </div>
     </div>
 
+    <details style="margin:14px 0 4px;padding:0;background:var(--bg-subtle);border-radius:14px;border:1px solid rgba(0,0,0,0.06);overflow:hidden;">
+      <summary style="padding:10px 16px;font-size:0.82rem;font-weight:600;color:var(--text-main);cursor:pointer;user-select:none;list-style-position:inside;">📜 更新日志（v4.31 · 2026-11-21）</summary>
+      <div style="padding:2px 16px 12px;font-size:0.76rem;color:var(--text-light);line-height:1.7;">
+        <p style="margin:6px 0 2px;font-weight:600;color:var(--text-main);">🎵 音效转换与补齐</p>
+        <ul style="margin:2px 0 8px;padding-left:18px;">
+          <li>新增双模式转换：⚡ 快速模式 / 🔬 完整转换</li>
+          <li>音效转换与补齐大幅提速</li>
+          <li>自动补齐缺失的 ogg / aiff 后缀</li>
+          <li>修复 ogg 变 0KB 打不开的问题</li>
+          <li>修复转换卡死不动的问题</li>
+          <li>转换方向选错时给出提示</li>
+        </ul>
+        <p style="margin:6px 0 2px;font-weight:600;color:var(--text-main);">🎼 生成aj音效</p>
+        <ul style="margin:2px 0 8px;padding-left:18px;">
+          <li>新增音效试听</li>
+          <li>新增命名交换调整</li>
+          <li>皮肤包导入后音效自动进试听列表</li>
+          <li>修复多音频命名互相覆盖的问题</li>
+        </ul>
+        <p style="margin:6px 0 2px;font-weight:600;color:var(--text-main);">🖥️ 界面</p>
+        <ul style="margin:2px 0 8px;padding-left:18px;">
+          <li>日志栏改为悬浮显示，可收起</li>
+          <li>修复工具栏超出手机屏幕的问题</li>
+        </ul>
+        <p style="margin:6px 0 2px;font-weight:600;color:var(--text-main);">🧹 其他</p>
+        <ul style="margin:2px 0 0;padding-left:18px;">
+          <li>所有功能产出的包统一删除 GSCopyright.json</li>
+        </ul>
+      </div>
+    </details>
+
     <div class="log-box" id="logBox"></div>
+    <button id="logFloatBtn" title="显示/隐藏日志" type="button">✕</button>
     <div class="footnote">图片压缩(可选) · 皮肤双向转换 · 溯源秘标 · 加密/解密 · 音效提取/转换/替换 · 字体打标 · 融彩转换 · 文本编辑</div>
   </div>
 
-  <script>
-    (function() {
+  <script>(function() {
       const optTimeStamp = document.getElementById('optTimeStamp');
       function getTimeStampSuffix() {
         if (!optTimeStamp || !optTimeStamp.checked) return '';
@@ -704,6 +787,27 @@
           return originalName.slice(0, dotIdx) + suffix + originalName.slice(dotIdx);
         }
         return originalName + suffix;
+      }
+
+      function isGSCopyrightFile(name) {
+        if (!name) return false;
+        const base = String(name).replace(/\\/g, '/').split('/').pop().toLowerCase();
+        return base === 'gscopyright.json';
+      }
+      function removeGSCopyrightFromZip(zip, logFunc) {
+        let removed = 0;
+        const allNames = Object.keys(zip.files);
+        for (const name of allNames) {
+          if (zip.files[name].dir) continue;
+          if (isGSCopyrightFile(name)) {
+            zip.remove(name);
+            removed++;
+          }
+        }
+        if (removed > 0 && typeof logFunc === 'function') {
+          logFunc('🗑️ 已删除 GSCopyright.json × ' + removed);
+        }
+        return removed;
       }
 
       const toastContainer = document.getElementById('toastContainer');
@@ -761,7 +865,15 @@
       const extractAudioBtn = document.getElementById('extractAudioBtn');
       const convertAudioBtn = document.getElementById('convertAudioBtn');
       const audioConvertDirection = document.getElementById('audioConvertDirection');
+      const convertModeSelect = document.getElementById('convertModeSelect');
       const logBox = document.getElementById('logBox');
+      const logFloatBtn = document.getElementById('logFloatBtn');
+      let logHidden = false;
+      logFloatBtn.addEventListener('click', function() {
+        logHidden = !logHidden;
+        logBox.style.display = logHidden ? 'none' : '';
+        logFloatBtn.textContent = logHidden ? '📋' : '✕';
+      });
       const demoInput = document.getElementById('demoInput');
       const demoPreview = document.getElementById('demoPreview');
       const demoPreviewImg = document.getElementById('demoPreviewImg');
@@ -794,6 +906,22 @@
       const audioReplaceCount = document.getElementById('audioReplaceCount');
       const clearAudioReplaceBtn = document.getElementById('clearAudioReplaceBtn');
       const replaceAudioBtn = document.getElementById('replaceAudioBtn');
+
+      const audioGenArea = document.getElementById('audioGenArea');
+      const audioGenInput = document.getElementById('audioGenInput');
+      const audioGenStatus = document.getElementById('audioGenStatus');
+      const audioGenName = document.getElementById('audioGenName');
+      const audioGenCount = document.getElementById('audioGenCount');
+      const clearAudioGenBtn = document.getElementById('clearAudioGenBtn');
+      const genAudioBtn = document.getElementById('genAudioBtn');
+      const audioGenList = document.getElementById('audioGenList');
+      let audioGenFiles = [];
+      let audioGenAssign = [];
+      let audioGenSelIdx = -1;
+      let previewCtx = null;
+      let previewSource = null;
+      let previewBtn = null;
+      let previewIdx = -1;
 
       const fontDropZone = document.getElementById('fontDropZone');
       const fontFileInput = document.getElementById('fontFileInput');
@@ -901,9 +1029,10 @@
               newSelected.push(f);
               continue;
             }
+            removeGSCopyrightFromZip(session.zip, log);
             const outBlob = await session.zip.generateAsync({
               type: 'blob', compression: 'DEFLATE',
-              compressionOptions: { level: 6 }
+              compressionOptions: { level: 1 }
             });
             newSelected.push(new File([outBlob], f.name, { type: 'application/zip' }));
             session.edited = false;
@@ -1252,6 +1381,7 @@
       async function applyMarkToZip(zip, items) {
         const names = Object.keys(zip.files).filter(n => !zip.files[n].dir);
         for (const name of names) {
+          if (isGSCopyrightFile(name)) { zip.remove(name); continue; }
           if (!shouldProcessMarkFile(name)) continue;
           const buf = await zip.files[name].async('uint8array');
           if (!isProbablyText(buf)) continue;
@@ -1298,10 +1428,11 @@
       async function markFileWithCamouflage(file, items) {
         const ab = await file.arrayBuffer();
         const zip = await JSZip.loadAsync(ab);
+        removeGSCopyrightFromZip(zip, log);
         await applyMarkToZip(zip, items);
         const outBlob = await zip.generateAsync({
           type: 'blob', compression: 'DEFLATE',
-          compressionOptions: { level: 6 }
+          compressionOptions: { level: 1 }
         });
         const newName = applyTimeStampToName(file.name);
         return new File([outBlob], newName, { type: file.type || 'application/zip' });
@@ -1325,10 +1456,15 @@
       }
 
       function log(msg) {
-        logBox.textContent += msg + '\n';
+        const line = document.createElement('div');
+        line.textContent = msg;
+        logBox.appendChild(line);
         logBox.scrollTop = logBox.scrollHeight;
+        if (logHidden) { logHidden = false; logBox.style.display = ''; }
+        logFloatBtn.style.display = 'flex';
+        logFloatBtn.textContent = '✕';
       }
-      function clearLog() { logBox.textContent = ''; }
+      function clearLog() { logBox.innerHTML = ''; logFloatBtn.style.display = 'none'; logHidden = false; }
 
       function formatSize(bytes) {
         if (bytes < 1024) return bytes + ' B';
@@ -1358,10 +1494,16 @@
           fileStatus.style.display = 'flex';
           fileName.textContent = names.length > 40 ? names.slice(0, 38) + '…' : names;
           fileSize.textContent = formatSize(totalSize);
-          const dir = currentMode === 'bds2bdi' ? '→ iOS' :
-            (currentMode === 'bdi2bds' ? '→ 安卓' :
-            (currentMode === 'audioReplace' ? '🔊 替换音效' : '🎵 音效'));
+          
+          let dir = '';
+          if (currentMode === 'bds2bdi') dir = '→ iOS';
+          else if (currentMode === 'bdi2bds') dir = '→ 安卓';
+          else if (currentMode === 'audioReplace') dir = '🔊 替换音效';
+          else if (currentMode === 'audioGen') dir = '🎼 生成aj音效';
+          else dir = '🎵 音效';
+          
           directionBadge.textContent = dir;
+          
           compressBtn.disabled = false;
           convertBtn.disabled = false;
           replaceDemoOnlyBtn.disabled = false;
@@ -1371,6 +1513,12 @@
           replaceAudioBtn.disabled = (currentMode !== 'audioReplace' || audioReplaceFiles.length === 0);
           executeSelectedBtn.disabled = false;
           btnMark.disabled = false;
+          
+          // 如果是生成音效模式，导入皮肤包后直接激活生成按钮
+          if (currentMode === 'audioGen') {
+            genAudioBtn.disabled = false;
+          }
+          
           markStatus.textContent = '📁 ' + files.length + ' 个文件';
           markStatus.className = 'mark-status';
 
@@ -1412,15 +1560,18 @@
           replaceAudioBtn.disabled = true;
           executeSelectedBtn.disabled = true;
           btnMark.disabled = true;
+          
+          if (currentMode === 'audioGen') {
+            genAudioBtn.disabled = audioGenFiles.length === 0;
+          }
+          
           markStatus.textContent = '⏳ 等待文件';
           markStatus.className = 'mark-status';
           editorPackageSelect.innerHTML = '<option value="">-- 请先上传皮肤包 --</option>';
           clearEditorSessions();
           editorPackAllBtn.disabled = true;
         }
-      }
-
-      function refreshPackEditedBtn() {
+      }function refreshPackEditedBtn() {
         const hasEdited = Object.values(editorSessions).some(s => s.edited);
         editorPackEditedBtn.disabled = !hasEdited;
       }
@@ -1443,6 +1594,7 @@
           try {
             const ab = await file.arrayBuffer();
             const zip = await JSZip.loadAsync(ab);
+            removeGSCopyrightFromZip(zip, log);
             const allFiles = Object.keys(zip.files).filter(n => !zip.files[n].dir);
             const options = allFiles.filter(n => /\.(txt|css)$/i.test(n));
             if (options.length === 0) {
@@ -1785,10 +1937,11 @@
         if (!session) { alert('请先加载文件'); return; }
         saveCurrentEditorToSession();
         flushSessionToZip(session);
+        removeGSCopyrightFromZip(session.zip, log);
         try {
           const outBlob = await session.zip.generateAsync({
             type: 'blob', compression: 'DEFLATE',
-            compressionOptions: { level: 6 }
+            compressionOptions: { level: 1 }
           });
           const outName = applyTimeStampToName(editorActiveFileName);
           const outFile = new File([outBlob], outName, { type: 'application/zip' });
@@ -1831,7 +1984,7 @@
         }
         const zip = new JSZip();
         for (const f of selectedFiles) zip.file(f.name, f);
-        const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+        const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
         saveAs(blob, '全部包_' + selectedFiles.length + '个文件.zip');
         log('📥 已打包下载全部 ' + selectedFiles.length + ' 个文件');
       });
@@ -1855,7 +2008,7 @@
         }
         const zip = new JSZip();
         for (const f of editedFiles) zip.file(f.name, f);
-        const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+        const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
         saveAs(blob, '编辑过的包_' + editedFiles.length + '个文件.zip');
         log('📥 已打包下载编辑过的 ' + editedFiles.length + ' 个文件');
       });
@@ -1988,7 +2141,7 @@
           log('📦 正在打包 ' + files.length + ' 个文件...');
           const zip = new JSZip();
           for (const file of files) zip.file(file.name, file);
-          const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+          const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
           saveAs(blob, '批量打标_' + files.length + '个文件.zip');
           log('✅ 批量下载完成，共 ' + files.length + ' 个文件');
         } catch (err) {
@@ -2051,6 +2204,7 @@
           try {
             let ab = await file.arrayBuffer();
             let zip = await JSZip.loadAsync(ab);
+            removeGSCopyrightFromZip(zip, log);
 
             if (markItems && markItems.length > 0) {
               await applyMarkToZip(zip, markItems);
@@ -2072,7 +2226,8 @@
 
             if (doConvert && (currentMode === 'bds2bdi' || currentMode === 'bdi2bds')) {
               const outZip = await processZipCommonStrict(zip);
-              let outBlob = await outZip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+              removeGSCopyrightFromZip(outZip, log);
+              let outBlob = await outZip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
               const outExt = currentMode === 'bds2bdi' ? 'bdi' : 'bds';
               const baseName = file.name.replace(/\.(bds|bdi|zip)$/i, '');
               const outName = applyTimeStampToName(baseName + '.' + outExt);
@@ -2080,7 +2235,7 @@
               outputs.push(outFile);
               log(`✅ [${idx+1}/${workingFiles.length}] 转换完成: ${outName}`);
             } else {
-              let outBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+              let outBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
               const outName = applyTimeStampToName(file.name);
               const outFile = new File([outBlob], outName, { type: 'application/zip' });
               outputs.push(outFile);
@@ -2097,7 +2252,7 @@
         } else {
           const resultZip = new JSZip();
           outputs.forEach(f => resultZip.file(f.name, f));
-          const outBlob = await resultZip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+          const outBlob = await resultZip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
           const zipName = `批量处理_${outputs.length}个文件.zip`;
           saveAs(outBlob, zipName);
           setSharedFiles([new File([outBlob], zipName)], '批量处理');
@@ -2211,12 +2366,196 @@
         return new Blob([out], { type: 'audio/wav' });
       }
 
+      // 通过 MediaRecorder 录制 OGG；结果为空时返回 null，绝不返回 0KB 文件
+      function recordOggViaMediaRecorder(audioBuffer) {
+        return new Promise((resolve) => {
+          let ctx = null;
+          try {
+            if (typeof MediaRecorder === 'undefined') { resolve(null); return; }
+            ctx = new (window.AudioContext || window.webkitAudioContext)();
+            if (ctx.state === 'suspended') { try { ctx.resume().catch(() => {}); } catch (e) {} }
+            const dest = ctx.createMediaStreamDestination();
+            const source = ctx.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(dest);
+            let mr;
+            try { mr = new MediaRecorder(dest.stream); }
+            catch (e) { try { ctx.close(); } catch (e2) {} resolve(null); return; }
+            const chunks = [];
+            let settled = false;
+            const finish = (b) => {
+              if (settled) return;
+              settled = true;
+              try { ctx.close(); } catch (e) {}
+              resolve(b);
+            };
+            mr.ondataavailable = e => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+            mr.onstop = () => finish(chunks.length > 0 ? new Blob(chunks, { type: 'audio/ogg' }) : null);
+            mr.onerror = () => finish(null);
+            mr.start();
+            source.start(0);
+            const waitMs = Math.max(300, (audioBuffer.duration * 1000) + 200);
+            setTimeout(() => { try { mr.stop(); } catch (e) { finish(null); } }, waitMs);
+            setTimeout(() => {
+              if (!settled) finish(chunks.length > 0 ? new Blob(chunks, { type: 'audio/ogg' }) : null);
+            }, waitMs + 3000);
+          } catch (e) {
+            if (ctx) { try { ctx.close(); } catch (e2) {} }
+            resolve(null);
+          }
+        });
+      }
+
+      // 给不确定何时返回的音频操作加超时保护，避免整个流程卡死
+      function withTimeout(promise, ms, label) {
+        return new Promise((resolve, reject) => {
+          const timer = setTimeout(() => reject(new Error((label || '操作') + ' 超时')), ms);
+          promise.then(
+            v => { clearTimeout(timer); resolve(v); },
+            e => { clearTimeout(timer); reject(e); }
+          );
+        });
+      }
+
+      // 手动解析 AIFF（FORM/AIFF）为 PCM，供不支持 AIFF 解码的浏览器兜底
+      function parseAiffPCM(ab) {
+        try {
+          const view = new DataView(ab);
+          if (ab.byteLength < 12) return null;
+          if (view.getUint32(0, false) !== 0x464F524D) return null; // 'FORM'
+          const formType = view.getUint32(8, false);
+          if (formType !== 0x41494646 && formType !== 0x41494631) return null; // 'AIFF'/'AIFC'
+          let offset = 12;
+          let channels = 0, sampleRate = 0, bits = 0, pcmStart = -1;
+          while (offset + 8 <= ab.byteLength) {
+            const chunkId = view.getUint32(offset, false);
+            const chunkSize = view.getUint32(offset + 4, false);
+            if (chunkSize > ab.byteLength) break;
+            if (chunkId === 0x434F4D4D) { // 'COMM'
+              channels = view.getUint16(offset + 8, false);
+              bits = view.getUint16(offset + 14, false);
+              sampleRate = readAiffExtended(view, offset + 16);
+            } else if (chunkId === 0x53534E44) { // 'SSND'
+              pcmStart = offset + 16 + view.getUint32(offset + 8, false);
+            }
+            offset += 8 + chunkSize + (chunkSize % 2);
+            if (channels && sampleRate && bits && pcmStart >= 0) break;
+          }
+          if (!channels || !sampleRate || !bits || pcmStart < 0 || pcmStart >= ab.byteLength) return null;
+          const bytesPerSample = bits / 8;
+          const frameCount = Math.floor((ab.byteLength - pcmStart) / (bytesPerSample * channels));
+          if (frameCount <= 0) return null;
+          const data = [];
+          for (let c = 0; c < channels; c++) data.push(new Float32Array(frameCount));
+          let p = pcmStart;
+          for (let f = 0; f < frameCount; f++) {
+            for (let c = 0; c < channels; c++) {
+              let sample = 0;
+              if (bits === 16) sample = view.getInt16(p, false) / 32768;
+              else if (bits === 8) sample = (view.getUint8(p) - 128) / 128;
+              else if (bits === 24) sample = ((view.getUint8(p) << 24) | (view.getUint8(p + 1) << 16) | (view.getUint8(p + 2) << 8)) / 2147483648;
+              else if (bits === 32) sample = view.getInt32(p, false) / 2147483648;
+              data[c][f] = sample;
+              p += bytesPerSample;
+            }
+          }
+          return { channels: channels, sampleRate: Math.round(sampleRate), frames: frameCount, data: data };
+        } catch (e) { return null; }
+      }
+
+      function readAiffExtended(view, pos) {
+        const sign = (view.getUint16(pos, false) & 0x8000) ? -1 : 1;
+        const expo = view.getUint16(pos, false) & 0x7fff;
+        const hi = view.getUint32(pos + 2, false);
+        const lo = view.getUint32(pos + 6, false);
+        if (expo === 0 && hi === 0 && lo === 0) return 0;
+        return sign * (hi * 4294967296 + lo) * Math.pow(2, expo - 16383 - 63);
+      }
+
+      // 纯 JS 解码 OGG：不依赖浏览器自带解码能力，任何浏览器都能快速解出音频数据
+      let jsOggDecoder = null;
+      async function decodeOggViaJS(ab) {
+        const NS = window['ogg-vorbis-decoder'];
+        if (!NS || !NS.OggVorbisDecoder) throw new Error('OGG 解码组件未加载');
+        if (!jsOggDecoder) {
+          jsOggDecoder = new NS.OggVorbisDecoder();
+          await jsOggDecoder.ready;
+        }
+        const decoded = await withTimeout(jsOggDecoder.decodeFile(new Uint8Array(ab)), 30000, 'OGG 解码');
+        if (!decoded || decoded.samplesDecoded <= 0 || decoded.channelData.length === 0) {
+          throw new Error('OGG 解码结果为空');
+        }
+        return decoded;
+      }
+
+      // 解码音频：OGG 优先用纯 JS 解码器（快且全浏览器可用），
+      // 其他格式用浏览器解码（带超时防卡死），AIFF 再用手动解析兜底
+      async function decodeAudioBufferCompat(audioCtx, ab) {
+        const head = new Uint8Array(ab.slice(0, 4));
+        const isOgg = head[0] === 0x4f && head[1] === 0x67 && head[2] === 0x67 && head[3] === 0x53;
+        if (isOgg) {
+          try {
+            const decoded = await decodeOggViaJS(ab);
+            const buf = audioCtx.createBuffer(decoded.channelData.length, decoded.samplesDecoded, decoded.sampleRate);
+            for (let c = 0; c < decoded.channelData.length; c++) buf.copyToChannel(decoded.channelData[c], c);
+            return buf;
+          } catch (e) {
+            // 组件未加载或个别编码不支持时，退回浏览器解码
+          }
+        }
+        try {
+          return await withTimeout(audioCtx.decodeAudioData(ab.slice(0)), 8000, '音频解码');
+        } catch (e) {
+          const parsed = parseAiffPCM(ab);
+          if (!parsed) throw e;
+          const buf = audioCtx.createBuffer(parsed.channels, parsed.frames, parsed.sampleRate);
+          for (let c = 0; c < parsed.channels; c++) buf.copyToChannel(parsed.data[c], c);
+          return buf;
+        }
+      }
+
+      // 批量转换共用一个音频通道，避免每个文件都新建/销毁导致变慢
+      let sharedDecodeCtx = null;
+      function getSharedDecodeCtx() {
+        if (!sharedDecodeCtx || sharedDecodeCtx.state === 'closed') {
+          sharedDecodeCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        return sharedDecodeCtx;
+      }
+
+      // 纯 JS 编码 OGG：直接把音频数据编码成 ogg 文件，比边播边录快几十倍
+      let oggEncodeFn = null;
+      async function encodeOggViaJS(audioBuffer) {
+        if (!oggEncodeFn) {
+          // 用动态加载避免个别浏览器不支持时影响整个脚本
+          const mod = await (new Function('u', 'return import(u)'))('https://cdn.jsdelivr.net/npm/@audio/encode-ogg@1.3.1/ogg-encode.js');
+          oggEncodeFn = mod.default;
+          if (!oggEncodeFn) throw new Error('OGG 编码组件未加载');
+        }
+        const channels = [];
+        for (let c = 0; c < audioBuffer.numberOfChannels; c++) channels.push(audioBuffer.getChannelData(c));
+        // quality 0-10（Vorbis 质量）：10 为最高档，听感与无损几乎一致；音效都很短，体积增加可忽略
+        const enc = await oggEncodeFn({ sampleRate: audioBuffer.sampleRate, channels: channels.length, quality: 10 });
+        try {
+          const a = enc.encode(channels);
+          const b = enc.flush();
+          const out = new Uint8Array(a.length + b.length);
+          out.set(a, 0);
+          if (b.length) out.set(b, a.length);
+          if (out.length === 0) throw new Error('OGG 编码结果为空');
+          return new Blob([out], { type: 'audio/ogg' });
+        } finally {
+          try { enc.free(); } catch (e) {}
+        }
+      }
+
       async function convertAudioBlob(blob, toExt, logFunc) {
         try {
           const ab = await blob.arrayBuffer();
-          const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-          const audioBuffer = await audioCtx.decodeAudioData(ab);
-          
+          const audioCtx = getSharedDecodeCtx();
+          if (audioCtx.state === 'suspended') { try { await withTimeout(audioCtx.resume(), 2000, '音频通道唤醒'); } catch (e) {} }
+          const audioBuffer = await decodeAudioBufferCompat(audioCtx, ab);
+
           if (toExt === 'wav' || toExt === 'aiff') {
             const wavBlob = await audioBufferToWav(audioBuffer);
             if (toExt === 'aiff') {
@@ -2224,35 +2563,19 @@
             }
             return wavBlob;
           } else if (toExt === 'ogg') {
-            const dest = audioCtx.createMediaStreamDestination();
-            const source = audioCtx.createBufferSource();
-            source.buffer = audioBuffer;
-            source.connect(dest);
-            
-            const mediaRecorder = new MediaRecorder(dest.stream);
-            const chunks = [];
-            mediaRecorder.ondataavailable = e => chunks.push(e.data);
-            
-            return new Promise((resolve, reject) => {
-              mediaRecorder.onstop = () => {
-                const b = new Blob(chunks, { type: 'audio/ogg' });
-                audioCtx.close();
-                resolve(b);
-              };
-              mediaRecorder.onerror = (e) => {
-                audioCtx.close();
-                reject(e);
-              };
-              mediaRecorder.start();
-              source.start(0);
-              setTimeout(() => {
-                mediaRecorder.stop();
-              }, (audioBuffer.duration * 1000) + 100);
-            });
+            // 优先用纯 JS 编码器（快），组件不可用时退回边播边录
+            try {
+              const fast = await encodeOggViaJS(audioBuffer);
+              if (fast && fast.size > 0) return fast;
+            } catch (e) {}
+            const recorded = await recordOggViaMediaRecorder(audioBuffer);
+            if (recorded && recorded.size > 0) return recorded;
+            throw new Error('OGG 编码结果为空');
           }
+          throw new Error('不支持的目标格式: ' + toExt);
         } catch (e) {
-          if (logFunc) logFunc('⚠️ 音频转码失败，使用备用替换策略: ' + e.message);
-          return new Blob([await blob.arrayBuffer()], { type: 'audio/' + toExt });
+          if (logFunc) logFunc('⚠️ 音频转码失败: ' + e.message);
+          throw e;
         }
       }
 
@@ -2262,6 +2585,7 @@
 
         for (const key of allFiles) {
           if (isMacMetadata(key)) continue;
+          if (isGSCopyrightFile(key)) continue;
           const lower = key.toLowerCase();
           const isAudio = lower.endsWith('.ogg') || lower.endsWith('.aiff') || lower.endsWith('.wav');
           if (!isAudio) continue;
@@ -2277,19 +2601,40 @@
           else if (lower.endsWith('.aiff')) audioGroups[groupKey].aiff = key;
         }
 
+        // 补齐方式跟随转换模式下拉框：快速模式只改后缀，完整模式真转码
+        const complementMode = (typeof convertModeSelect !== 'undefined' && convertModeSelect) ? convertModeSelect.value : 'fast';
+
         for (const [groupKey, group] of Object.entries(audioGroups)) {
           if (group.ogg && !group.aiff) {
             const oggBlob = await zip.file(group.ogg).async('blob');
-            const converted = await convertAudioBlob(oggBlob, 'aiff', logFunc);
-            const newPath = group.dir + group.base + '.aiff';
-            zip.file(newPath, converted);
-            if (logFunc) logFunc('🔊 补全音效: ' + newPath);
+            try {
+              let converted;
+              if (complementMode === 'fast') {
+                converted = new Blob([await oggBlob.arrayBuffer()], { type: 'audio/aiff' });
+              } else {
+                converted = await convertAudioBlob(oggBlob, 'aiff', logFunc);
+              }
+              const newPath = group.dir + group.base + '.aiff';
+              zip.file(newPath, converted);
+              if (logFunc) logFunc('🔊 补全音效' + (complementMode === 'fast' ? '(快速)' : '') + ': ' + newPath);
+            } catch (e) {
+              if (logFunc) logFunc('⚠️ 补全失败，已跳过: ' + group.base + '.aiff');
+            }
           } else if (group.aiff && !group.ogg) {
             const aiffBlob = await zip.file(group.aiff).async('blob');
-            const converted = await convertAudioBlob(aiffBlob, 'ogg', logFunc);
-            const newPath = group.dir + group.base + '.ogg';
-            zip.file(newPath, converted);
-            if (logFunc) logFunc('🔊 补全音效: ' + newPath);
+            try {
+              let converted;
+              if (complementMode === 'fast') {
+                converted = new Blob([await aiffBlob.arrayBuffer()], { type: 'audio/ogg' });
+              } else {
+                converted = await convertAudioBlob(aiffBlob, 'ogg', logFunc);
+              }
+              const newPath = group.dir + group.base + '.ogg';
+              zip.file(newPath, converted);
+              if (logFunc) logFunc('🔊 补全音效' + (complementMode === 'fast' ? '(快速)' : '') + ': ' + newPath);
+            } catch (e) {
+              if (logFunc) logFunc('⚠️ 补全失败，已跳过: ' + group.base + '.ogg');
+            }
           }
         }
         return zip;
@@ -2307,8 +2652,8 @@
           const lowerOrigin = originPath.toLowerCase();
 
           if (isMacMetadata(originPath)) continue;
+          if (isGSCopyrightFile(originPath)) continue;
 
-          if (lowerOrigin.endsWith('gscopyright.json')) continue;
           if (lowerOrigin.endsWith('rain.til') || lowerOrigin.endsWith('niarbv.til') || lowerOrigin.endsWith('ysdq.til')) continue;
           if (lowerOrigin.endsWith('ysym.ini')) continue;
 
@@ -2435,13 +2780,14 @@
             log('📦 [' + (idx + 1) + '/' + files.length + '] 压缩: ' + file.name);
             const ab = await file.arrayBuffer();
             const zip = await JSZip.loadAsync(ab);
+            removeGSCopyrightFromZip(zip, log);
             const newZip = new JSZip();
             const entries = Object.keys(zip.files);
             const imageFiles = entries.filter(filename => {
               if (zip.files[filename].dir) return false;
               if (isMacMetadata(filename)) return false;
               const lowerFilename = filename.toLowerCase();
-              if (lowerFilename.endsWith('gscopyright.json')) return false;
+              if (isGSCopyrightFile(filename)) return false;
               if (lowerFilename.endsWith('rain.til') || lowerFilename.endsWith('niarbv.til') || lowerFilename.endsWith('ysdq.til')) return false;
               if (lowerFilename.endsWith('ysym.ini')) return false;
               return /\.(png|jpg|jpeg|webp|gif|bmp)$/i.test(filename);
@@ -2450,7 +2796,7 @@
             for (const filename of entries) {
               if (zip.files[filename].dir) continue;
               if (isMacMetadata(filename)) continue;
-              if (filename.toLowerCase().endsWith('gscopyright.json')) continue;
+              if (isGSCopyrightFile(filename)) continue;
               const lowerFilename = filename.toLowerCase();
               if (lowerFilename.endsWith('rain.til') || lowerFilename.endsWith('niarbv.til') || lowerFilename.endsWith('ysdq.til')) continue;
               if (lowerFilename.endsWith('ysym.ini')) continue;
@@ -2480,7 +2826,7 @@
               }
             }
             updateProgress(100);
-            const content = await newZip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+            const content = await newZip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE', compressionOptions: { level: 1 } });
             const compressedBlob = new Blob([content], { type: 'application/zip' });
             const outName = applyTimeStampToName(file.name);
             newCompressedFiles.push({ name: outName, blob: compressedBlob, originalSize: file.size, compressedSize: compressedBlob.size });
@@ -2691,13 +3037,14 @@
             log('📦 [' + (idx + 1) + '/' + selectedFiles.length + '] 处理: ' + file.name);
             const ab = await file.arrayBuffer();
             const zip = await JSZip.loadAsync(ab);
+            removeGSCopyrightFromZip(zip, log);
             const newZip = new JSZip();
             const entries = Object.keys(zip.files);
             const imageFiles = entries.filter(filename => {
               if (zip.files[filename].dir) return false;
               if (isMacMetadata(filename)) return false;
               const lowerFilename = filename.toLowerCase();
-              if (lowerFilename.endsWith('gscopyright.json')) return false;
+              if (isGSCopyrightFile(filename)) return false;
               if (lowerFilename.endsWith('rain.til') || lowerFilename.endsWith('niarbv.til') || lowerFilename.endsWith('ysdq.til')) return false;
               if (lowerFilename.endsWith('ysym.ini')) return false;
               return /\.(png|jpg|jpeg|webp|gif|bmp)$/i.test(filename);
@@ -2706,7 +3053,7 @@
             for (const filename of entries) {
               if (zip.files[filename].dir) continue;
               if (isMacMetadata(filename)) continue;
-              if (filename.toLowerCase().endsWith('gscopyright.json')) continue;
+              if (isGSCopyrightFile(filename)) continue;
               const lowerFilename = filename.toLowerCase();
               if (lowerFilename.endsWith('rain.til') || lowerFilename.endsWith('niarbv.til') || lowerFilename.endsWith('ysdq.til')) continue;
               if (lowerFilename.endsWith('ysym.ini')) continue;
@@ -2736,7 +3083,7 @@
               }
             }
             updateProgress(100);
-            const content = await newZip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+            const content = await newZip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE', compressionOptions: { level: 1 } });
             const compressedBlob = new Blob([content], { type: 'application/zip' });
             const outName = applyTimeStampToName(file.name);
             compressedFiles.push({ name: outName, blob: compressedBlob, originalSize: file.size, compressedSize: compressedBlob.size });
@@ -2768,7 +3115,7 @@
         } else {
           const resultZip = new JSZip();
           compressedFiles.forEach(f => resultZip.file(f.name, f.blob));
-          resultZip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } })
+          resultZip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } })
             .then(blob => {
               saveAs(blob, '压缩后_' + compressedFiles.length + '个文件.zip');
               log('💾 已下载压缩后的文件包');
@@ -2871,8 +3218,9 @@
           try {
             const ab = await file.arrayBuffer();
             const zip = await JSZip.loadAsync(ab);
+            removeGSCopyrightFromZip(zip, log);
             await replaceDemoInZipStrict(zip, newDemoBlob);
-            const outBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+            const outBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
             const outName = applyTimeStampToName(file.name);
             const outFile = new File([outBlob], outName, { type: 'application/zip' });
             outputs.push(outFile);
@@ -2892,7 +3240,7 @@
         } else {
           const resultZip = new JSZip();
           outputs.forEach(f => resultZip.file(f.name, f));
-          const outBlob = await resultZip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+          const outBlob = await resultZip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
           saveAs(outBlob, '仅替换demo_' + outputs.length + '个文件.zip');
         }
         setSharedFiles(outputs, '仅替换demo');
@@ -2925,8 +3273,10 @@
           try {
             const arrayBuffer = await file.arrayBuffer();
             const zip = await JSZip.loadAsync(arrayBuffer);
+            removeGSCopyrightFromZip(zip, log);
             const outZip = await processZipCommonStrict(zip);
-            let outBlob = await outZip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+            removeGSCopyrightFromZip(outZip, log);
+            let outBlob = await outZip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
             let finalFile = new File([outBlob], outFileName);
             if (savedMarkContent) {
               const items = parseMarkInput(savedMarkContent);
@@ -2952,7 +3302,7 @@
         } else {
           const zip = new JSZip();
           outputs.forEach(f => zip.file(f.name, f));
-          const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+          const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
           const zipName = `转换结果_${outputs.length}个文件.zip`;
           saveAs(zipBlob, zipName);
           log('📥 已打包下载: ' + zipName);
@@ -2981,6 +3331,7 @@
             for (const key of Object.keys(zip.files)) {
               const entry = zip.files[key];
               if (entry.dir) continue;
+              if (isGSCopyrightFile(key)) continue;
               const lower = key.toLowerCase();
               if (lower.endsWith('.ogg') || lower.endsWith('.aiff') || lower.endsWith('.wav')) {
                 audioEntries.push({ key, entry, lower, name: key.split('/').pop() });
@@ -3043,7 +3394,7 @@
           }
         }
         if (totalAudio === 0) { alert('未提取到任何音效文件'); return; }
-        const outBlob = await resultZip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+        const outBlob = await resultZip.generateAsync({ type: 'blob', compression: 'STORE' });
         const outZipName = '音效提取_' + totalAudio + '个文件.zip';
         saveAs(outBlob, outZipName);
         log('✅ 音效提取完成，共 ' + totalAudio + ' 个音效文件');
@@ -3054,13 +3405,15 @@
         const filesToProcess = getFilesToProcess();
         if (!filesToProcess || filesToProcess.length === 0) { alert('请先上传皮肤包'); return; }
         const direction = audioConvertDirection.value;
+        const convertMode = convertModeSelect ? convertModeSelect.value : 'fast';
         let fromExt, toExt, fromLabel, toLabel;
         if (direction === 'aiff2ogg') { fromExt = 'aiff'; toExt = 'ogg'; fromLabel = 'AIFF'; toLabel = 'OGG'; }
         else { fromExt = 'ogg'; toExt = 'aiff'; fromLabel = 'OGG'; toLabel = 'AIFF'; }
         clearLog();
-        log('🔄 开始音效格式转换: ' + fromLabel + ' → ' + toLabel);
+        log('🔄 开始音效格式转换: ' + fromLabel + ' → ' + toLabel + (convertMode === 'fast' ? '（快速模式：只改后缀）' : '（完整转换：真转码）'));
         const resultZip = new JSZip();
         let totalConverted = 0;
+        const seenAudio = { aiff: 0, ogg: 0, wav: 0 };
         for (let idx = 0; idx < filesToProcess.length; idx++) {
           const file = filesToProcess[idx];
           try {
@@ -3070,12 +3423,23 @@
             for (const key of Object.keys(zip.files)) {
               const entry = zip.files[key];
               if (entry.dir) continue;
+              if (isGSCopyrightFile(key)) continue;
               const lower = key.toLowerCase();
+              if (lower.endsWith('.aiff')) seenAudio.aiff++;
+              else if (lower.endsWith('.ogg')) seenAudio.ogg++;
+              else if (lower.endsWith('.wav')) seenAudio.wav++;
               if (lower.endsWith('.' + fromExt)) {
                 const blob = await entry.async('blob');
                 const name = key.split('/').pop();
                 const newName = name.replace(new RegExp('\\.' + fromExt + '$', 'i'), '.' + toExt);
-                resultZip.file(newName, blob);
+                if (convertMode === 'fast') {
+                  // 快速模式：原样复制，只改扩展名，瞬间完成
+                  resultZip.file(newName, blob);
+                } else {
+                  // 完整转换：解码后重新编码为目标格式
+                  const convertedBlob = await convertAudioBlob(blob, toExt, log);
+                  resultZip.file(newName, convertedBlob);
+                }
                 converted++;
                 totalConverted++;
               }
@@ -3085,8 +3449,16 @@
             log('❌ [' + (idx + 1) + '/' + filesToProcess.length + '] ' + file.name + ' 失败: ' + err.message);
           }
         }
-        if (totalConverted === 0) { alert('未找到任何 .' + fromExt + ' 格式的音效文件'); return; }
-        const outBlob = await resultZip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+        if (totalConverted === 0) {
+          let hint;
+          if (fromExt === 'aiff' && seenAudio.ogg > 0) hint = '这个包里是 .ogg 音效，请把方向切换为 OGG → AIFF 再试';
+          else if (fromExt === 'ogg' && seenAudio.aiff > 0) hint = '这个包里是 .aiff 音效，请把方向切换为 AIFF → OGG 再试';
+          else if (seenAudio.wav > 0 && seenAudio.aiff === 0 && seenAudio.ogg === 0) hint = '这个包里只有 .wav 音效，没有可互转的格式';
+          else hint = '这个包里没有找到音效文件';
+          alert('未找到任何 .' + fromExt + ' 格式的音效文件。' + hint);
+          return;
+        }
+        const outBlob = await resultZip.generateAsync({ type: 'blob', compression: 'STORE' });
         saveAs(outBlob, '音效转换_' + fromLabel + '2' + toLabel + '_' + totalConverted + '个文件.zip');
         log('✅ 音效转换完成，转换 ' + totalConverted + ' 个');
       });
@@ -3116,15 +3488,16 @@
         if (!supported) { alert('请上传 .zip / .bdi / .bds 格式的音效包'); return; }
         audioReplaceZipBlob = supported;
         try {
-          // 核心修复：音效包本身也可能是加密的，必须在此处先自动解密！
           const rawBuffer = await supported.arrayBuffer();
           const decryptRes = await autoDecryptBuffer(rawBuffer, supported.name);
           
           const zip = await JSZip.loadAsync(decryptRes.buffer);
+          removeGSCopyrightFromZip(zip, log);
           const audioFiles = [];
           for (const key of Object.keys(zip.files)) {
             const entry = zip.files[key];
             if (entry.dir) continue;
+            if (isGSCopyrightFile(key)) continue;
             const name = key.split('/').pop();
             const lower = name.toLowerCase();
             if (lower.endsWith('.aiff') || lower.endsWith('.ogg') || lower.endsWith('.wav')) {
@@ -3149,7 +3522,6 @@
         log('↩️ 已清除音效包');
       });
 
-      // ★ 暴力全量替换音效：强行把音效包里的所有音频塞进日间和夜间的res目录（绝对不碰land）
       async function replaceAudioInSkin(zip, audioFiles, originalFileName) {
         const outZip = new JSZip();
         const allFiles = Object.keys(zip.files).filter(k => !zip.files[k].dir);
@@ -3186,6 +3558,7 @@
         }
 
         for (const key of allFiles) {
+          if (isGSCopyrightFile(key)) continue;
           const entry = zip.files[key];
           const originPath = key.replace(/^\.\//, '').replace(/^\//, '');
           const fileName = originPath.split('/').pop();
@@ -3253,7 +3626,6 @@
         clearLog();
         log('🔊 开始音效替换');
         
-        // 替换前先检测解密
         const decryptedProcessed = await autoDecryptFileList(filesToProcess, '音效替换池');
         if (decryptedProcessed.decryptedCount > 0) {
            maybeShowDecryptToast(decryptedProcessed, filesToProcess.length);
@@ -3267,8 +3639,10 @@
           try {
             const ab = await file.arrayBuffer();
             const zip = await JSZip.loadAsync(ab);
+            removeGSCopyrightFromZip(zip, log);
             const outZip = await replaceAudioInSkin(zip, audioReplaceFiles, file.name);
-            let outBlob = await outZip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+            removeGSCopyrightFromZip(outZip, log);
+            let outBlob = await outZip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
             let finalFile = new File([outBlob], file.name);
             if (savedMarkContent) {
               const items = parseMarkInput(savedMarkContent);
@@ -3298,8 +3672,10 @@
           try {
             const ab = await file.arrayBuffer();
             const zip = await JSZip.loadAsync(ab);
+            removeGSCopyrightFromZip(zip, log);
             const outZip = await replaceAudioInSkin(zip, audioReplaceFiles, file.name);
-            let outBlob = await outZip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+            removeGSCopyrightFromZip(outZip, log);
+            let outBlob = await outZip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
             let finalFile = new File([outBlob], file.name);
             if (savedMarkContent) {
               const items = parseMarkInput(savedMarkContent);
@@ -3314,7 +3690,7 @@
             log('❌ [' + (idx + 1) + '/' + targetFiles.length + '] ' + file.name + ' 失败: ' + err.message);
           }
         }
-        const outBlob = await resultZip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+        const outBlob = await resultZip.generateAsync({ type: 'blob', compression: 'STORE' });
         const outZipName = '音效替换_' + targetFiles.length + '个文件.zip';
         saveAs(outBlob, outZipName);
         setSharedFiles([new File([outBlob], outZipName)], '批量音效替换');
@@ -3323,6 +3699,392 @@
         replaceAudioBtn.disabled = false;
         replaceAudioBtn.textContent = '🔊 替换音效并下载';
       });
+
+      // ===== 批量生成 aj / ajhc / ajgn 音效 =====
+      audioGenArea.addEventListener('click', () => audioGenInput.click());
+      audioGenArea.addEventListener('dragover', (e) => { e.preventDefault(); audioGenArea.classList.add('dragover'); });
+      audioGenArea.addEventListener('dragleave', () => audioGenArea.classList.remove('dragover'));
+      audioGenArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        audioGenArea.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) handleAudioGenFiles(e.dataTransfer.files);
+      });
+      audioGenInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) handleAudioGenFiles(e.target.files);
+        audioGenInput.value = '';
+      });
+
+      // 支持解析 ZIP 音频包
+      async function handleAudioGenFiles(fileList) {
+        const files = Array.from(fileList);
+        if (files.length === 0) return;
+        
+        let valid = [];
+        let validZipFiles = [];
+        
+        for (const f of files) {
+          if (f.name.toLowerCase().endsWith('.zip')) {
+             validZipFiles.push(f);
+          } else if (/\.(mp3|wav|ogg|aiff|m4a|flac|aac|opus|webm)$/i.test(f.name)) {
+             valid.push(f);
+          }
+        }
+
+        if (valid.length === 0 && validZipFiles.length === 0) { 
+          alert('请上传音频文件或 zip 音频包（mp3 / wav / ogg / aiff / m4a / flac / aac 等）'); 
+          return; 
+        }
+
+        // 处理ZIP包
+        if (validZipFiles.length > 0) {
+           for (const zipFile of validZipFiles) {
+              try {
+                 const ab = await zipFile.arrayBuffer();
+                 const zip = await JSZip.loadAsync(ab);
+                 removeGSCopyrightFromZip(zip, log);
+                 let count = 0;
+                 for (const key of Object.keys(zip.files)) {
+                    const entry = zip.files[key];
+                    if (entry.dir) continue;
+                    if (isGSCopyrightFile(key)) continue;
+                    if (/\.(mp3|wav|ogg|aiff|m4a|flac|aac|opus|webm)$/i.test(key)) {
+                       const blob = await entry.async('blob');
+                       const name = key.split('/').pop();
+                       valid.push(new File([blob], name, { type: 'audio/' + name.split('.').pop() }));
+                       count++;
+                    }
+                 }
+                 if (count > 0) log(`✅ 已从 ${zipFile.name} 提取 ${count} 个音频`);
+                 else log(`⚠️ ${zipFile.name} 中未找到支持的音频文件`);
+              } catch (err) {
+                 log(`❌ 解析ZIP失败: ${zipFile.name} - ${err.message}`);
+              }
+           }
+        }
+
+        if (valid.length === 0) {
+           alert('未能提取到任何有效的音频文件');
+           return;
+        }
+
+        // 合并到已有的列表中
+        audioGenFiles = audioGenFiles.concat(valid);
+        computeDefaultAssign();
+        audioGenSelIdx = -1;
+        renderAudioGenList();
+        audioGenStatus.style.display = 'flex';
+        audioGenName.textContent = audioGenFiles.length === 1 ? audioGenFiles[0].name : (audioGenFiles.length + ' 个音频文件');
+        audioGenCount.textContent = audioGenFiles.length + ' 个音频';
+        
+        if (currentMode === 'audioGen') {
+          genAudioBtn.disabled = false;
+        }
+        
+        log('✅ 当前共 ' + audioGenFiles.length + ' 个音频文件用于生成 aj 音效');
+      }
+
+      // 按导入顺序默认命名：第1个→aj，第2个→ajhc，第3个→ajgn；不足3个时最后一个补齐剩余名字，超出3个的标记为未使用
+      function computeDefaultAssign() {
+        const names = ['aj', 'ajhc', 'ajgn'];
+        // 保留已有分配（含皮肤包提取时按音效名确定的命名和用户交换过的结果），只为新增条目补默认值
+        audioGenAssign = audioGenFiles.map((f, i) => audioGenAssign[i] !== undefined ? audioGenAssign[i] : (i < names.length ? [names[i]] : []));
+        if (audioGenFiles.length > 0 && audioGenFiles.length < names.length) {
+          const last = audioGenAssign[audioGenAssign.length - 1];
+          for (let k = last.length; k < names.length; k++) last.push(names[k]);
+        }
+      }
+
+      // 生成aj音效模式下导入皮肤包时，把包内音效提取到试听列表（可试听、可交换命名）
+      async function extractSkinAudioForPreview(skinFiles) {
+        const stdNames = ['aj', 'ajhc', 'ajgn'];
+        const seen = new Set(audioGenFiles.map(f => f.name.replace(/\.[^.]+$/, '').toLowerCase()));
+        let added = 0;
+        for (const file of skinFiles) {
+          try {
+            const ab = await file.arrayBuffer();
+            const zip = await JSZip.loadAsync(ab);
+            const packSeen = new Set();
+            for (const key of Object.keys(zip.files)) {
+              const entry = zip.files[key];
+              if (entry.dir || isGSCopyrightFile(key)) continue;
+              const lower = key.toLowerCase();
+              if (lower.endsWith('.ogg') || lower.endsWith('.aiff') || lower.endsWith('.wav')) {
+                const baseName = key.split('/').pop().replace(/\.(ogg|aiff|wav)$/i, '');
+                if (packSeen.has(baseName.toLowerCase()) || seen.has(baseName.toLowerCase())) continue;
+                packSeen.add(baseName.toLowerCase());
+                seen.add(baseName.toLowerCase());
+                const ext = lower.split('.').pop();
+                const blob = await entry.async('blob');
+                audioGenFiles.push(new File([blob], baseName + '.' + ext, { type: 'audio/' + ext }));
+                audioGenAssign.push(stdNames.includes(baseName.toLowerCase()) ? [baseName.toLowerCase()] : []);
+                added++;
+              }
+            }
+            if (packSeen.size > 0) log('🎧 已从 ' + file.name + ' 提取 ' + packSeen.size + ' 个音效加入试听列表');
+          } catch (err) {
+            log('❌ 读取皮肤包 ' + file.name + ' 失败: ' + (err && err.message ? err.message : err));
+          }
+        }
+        if (added > 0) {
+          audioGenSelIdx = -1;
+          renderAudioGenList();
+          audioGenStatus.style.display = 'flex';
+          audioGenName.textContent = audioGenFiles.length === 1 ? audioGenFiles[0].name : (audioGenFiles.length + ' 个音频文件');
+          audioGenCount.textContent = audioGenFiles.length + ' 个音频';
+          genAudioBtn.disabled = false;
+          log('✅ 共 ' + added + ' 个音效可试听；命名与音效名对应，点两个条目可交换命名');
+        }
+      }
+
+      function renderAudioGenList() {
+        audioGenList.innerHTML = '';
+        if (audioGenFiles.length === 0) { audioGenList.style.display = 'none'; return; }
+        audioGenList.style.display = 'flex';
+        audioGenFiles.forEach((f, i) => {
+          const item = document.createElement('div');
+          item.className = 'audio-gen-item' + (i === audioGenSelIdx ? ' selected' : '');
+          const play = document.createElement('button');
+          play.className = 'gen-play'; play.type = 'button'; play.textContent = '▶';
+          play.title = '试听';
+          play.addEventListener('click', (e) => { e.stopPropagation(); togglePreview(i, play); });
+          const name = document.createElement('span');
+          name.className = 'gen-file'; name.textContent = f.name;
+          const badge = document.createElement('span');
+          badge.className = 'gen-name';
+          const assigned = audioGenAssign[i] || [];
+          badge.textContent = assigned.length === 0 ? '未使用' : '→ ' + assigned.join(' / ');
+          item.appendChild(play); item.appendChild(name); item.appendChild(badge);
+          item.addEventListener('click', () => {
+            stopPreview();
+            if (audioGenSelIdx === -1) { audioGenSelIdx = i; }
+            else if (audioGenSelIdx === i) { audioGenSelIdx = -1; }
+            else {
+              const a = audioGenSelIdx, b = i;
+              const tmp = audioGenAssign[a];
+              audioGenAssign[a] = audioGenAssign[b];
+              audioGenAssign[b] = tmp;
+              log('🔄 已交换命名: ' + audioGenFiles[a].name + ' ↔ ' + audioGenFiles[b].name);
+              audioGenSelIdx = -1;
+            }
+            renderAudioGenList();
+          });
+          audioGenList.appendChild(item);
+        });
+        const hint = document.createElement('div');
+        hint.style.cssText = 'font-size:12px;color:var(--text-secondary);padding:2px 4px;';
+        hint.textContent = '点 ▶ 试听；点两个条目交换它们的命名';
+        audioGenList.appendChild(hint);
+      }
+
+      function stopPreview() {
+        if (previewSource) { try { previewSource.stop(); } catch (e) {} previewSource = null; }
+        if (previewBtn) { previewBtn.textContent = '▶'; previewBtn.classList.remove('playing'); previewBtn = null; }
+        previewIdx = -1;
+      }
+      async function togglePreview(i, btn) {
+        if (previewIdx === i) { stopPreview(); return; }
+        stopPreview();
+        try {
+          if (!previewCtx) previewCtx = new (window.AudioContext || window.webkitAudioContext)();
+          if (previewCtx.state === 'suspended') { try { await previewCtx.resume(); } catch (e) {} }
+          const ab = await audioGenFiles[i].arrayBuffer();
+          const buf = await decodeAudioBufferCompat(previewCtx, ab);
+          const src = previewCtx.createBufferSource();
+          src.buffer = buf;
+          src.connect(previewCtx.destination);
+          src.onended = () => {
+            if (previewSource === src) { previewSource = null; previewIdx = -1; btn.textContent = '▶'; btn.classList.remove('playing'); }
+          };
+          src.start();
+          previewSource = src; previewIdx = i; previewBtn = btn;
+          btn.textContent = '⏸'; btn.classList.add('playing');
+        } catch (e) {
+          log('⚠️ 无法预览 ' + audioGenFiles[i].name + ': ' + (e && e.message ? e.message : e));
+        }
+      }
+
+      clearAudioGenBtn.addEventListener('click', function() {
+        audioGenFiles = [];
+        audioGenAssign = [];
+        audioGenSelIdx = -1;
+        stopPreview();
+        renderAudioGenList();
+        audioGenStatus.style.display = 'none';
+        if (currentMode === 'audioGen') {
+          genAudioBtn.disabled = selectedFiles.length === 0;
+        }
+        log('↩️ 已清除待生成的音频');
+      });
+
+      genAudioBtn.addEventListener('click', async function() {
+        genAudioBtn.disabled = true;
+        genAudioBtn.textContent = '⏳ 生成中...';
+        try {
+          await runAudioGen();
+        } catch (e) {
+          log('❌ 生成过程出现异常: ' + (e && e.message ? e.message : e));
+        } finally {
+          // 无论中途发生什么，都保证按钮恢复可点，不再永久卡在“生成中”
+          genAudioBtn.disabled = false;
+          genAudioBtn.textContent = '🎼 生成aj音效并下载';
+        }
+      });
+
+      async function runAudioGen() {
+        await flushEditorToFiles();
+        const skinFiles = getFilesToProcess();
+        const hasAudioFiles = audioGenFiles.length > 0;
+        const hasSkinFiles = skinFiles && skinFiles.length > 0;
+        
+        if (!hasAudioFiles && !hasSkinFiles) {
+          alert('请先上传独立的音频文件/音频包，或者在上方导入皮肤包');
+          return;
+        }
+        
+        genAudioBtn.disabled = true;
+        genAudioBtn.textContent = '⏳ 生成中...';
+        clearLog();
+        
+        let sourceAudioList = [];
+        let sourceAssignList = [];
+        
+        // 1. 如果传入了皮肤包，提取其中尚未加入试听列表的音效（导入时已提取过的按音效名去重，不会重复生成）
+        if (hasSkinFiles) {
+          log('🎼 正在从导入的皮肤包中提取同名音效...');
+          const previewBaseNames = new Set(audioGenFiles.map(f => f.name.replace(/\.[^.]+$/, '').toLowerCase()));
+          for (const file of skinFiles) {
+            try {
+              const ab = await file.arrayBuffer();
+              const zip = await JSZip.loadAsync(ab);
+              const seenBaseNames = new Set();
+              for (const key of Object.keys(zip.files)) {
+                const entry = zip.files[key];
+                if (entry.dir || isGSCopyrightFile(key)) continue;
+                const lower = key.toLowerCase();
+                if (lower.endsWith('.ogg') || lower.endsWith('.aiff') || lower.endsWith('.wav')) {
+                   const baseName = key.split('/').pop().replace(/\.(ogg|aiff|wav)$/i, '');
+                   if (seenBaseNames.has(baseName.toLowerCase()) || previewBaseNames.has(baseName.toLowerCase())) continue;
+                   seenBaseNames.add(baseName.toLowerCase());
+                   const blob = await entry.async('blob');
+                   sourceAudioList.push(new File([blob], baseName + '.' + lower.split('.').pop(), { type: 'audio/' + lower.split('.').pop() }));
+                   sourceAssignList.push(['aj', 'ajhc', 'ajgn'].includes(baseName.toLowerCase()) ? [baseName.toLowerCase()] : []);
+                }
+              }
+              if (seenBaseNames.size > 0) log(`✅ 已从皮肤包 ${file.name} 中补充提取 ${seenBaseNames.size} 个去重后的音频`);
+            } catch (err) {
+              log(`❌ 读取皮肤包 ${file.name} 失败: ${err.message}`);
+            }
+          }
+        }
+        
+        // 2. 如果传入了独立音频/音频包，追加到列表里（使用预览列表中的命名分配）
+        if (hasAudioFiles) {
+          log(`🎼 正在加入手动导入的 ${audioGenFiles.length} 个独立音频...`);
+          sourceAudioList = sourceAudioList.concat(audioGenFiles);
+          sourceAssignList = sourceAssignList.concat(audioGenAssign);
+        }
+
+        if (sourceAudioList.length === 0) {
+          alert('没有找到任何可用的音频文件');
+          genAudioBtn.disabled = false;
+          genAudioBtn.textContent = '🎼 生成aj音效并下载';
+          return;
+        }
+
+        log('🎼 开始批量生成 aj / ajhc / ajgn 音效（.ogg + .aiff）');
+        const names = ['aj', 'ajhc', 'ajgn'];
+        const resultZip = new JSZip();
+        let success = 0;
+        let fail = 0;
+
+        for (let i = 0; i < sourceAudioList.length; i++) {
+          const srcFile = sourceAudioList[i];
+          const assignedNames = sourceAssignList[i];
+          if (assignedNames && assignedNames.length === 0) {
+            log('⏭️ [' + (i + 1) + '/' + sourceAudioList.length + '] ' + srcFile.name + ' 未分配命名，已跳过');
+            continue;
+          }
+          const writeNames = assignedNames || names;
+          log('🎼 [' + (i + 1) + '/' + sourceAudioList.length + '] 正在处理 ' + srcFile.name + ' → ' + writeNames.join('/') + ' ...');
+          genAudioBtn.textContent = '⏳ 生成中 ' + (i + 1) + '/' + sourceAudioList.length + ' ...';
+          try {
+            const srcLower = (srcFile.name || '').toLowerCase();
+            const srcIsOgg = srcLower.endsWith('.ogg');
+            const ab = await srcFile.arrayBuffer();
+
+            let audioBuffer = null;
+            let wavBlob = null;
+            let audioCtx = null;
+            try {
+              audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+              if (audioCtx.state === 'suspended') {
+                try { await withTimeout(audioCtx.resume(), 2000, '音频通道唤醒'); } catch (e) {}
+              }
+              // 解码加超时保护：个别浏览器解码不返回会导致整包卡死；AIFF 用手动解析兜底
+              audioBuffer = await decodeAudioBufferCompat(audioCtx, ab);
+              wavBlob = await audioBufferToWav(audioBuffer);
+            } catch (decodeErr) {
+              if (!srcIsOgg) throw decodeErr;
+              log('⚠️ ' + srcFile.name + ' 解码失败，仅保留原始 OGG 数据');
+            } finally {
+              // 用完立即释放音频通道，避免累计超限后新建通道失败或卡住
+              if (audioCtx) { try { audioCtx.close(); } catch (e) {} }
+            }
+
+            // 生成 ogg：OGG 源直接保留原始数据（不重编码，避免损坏/0KB）；
+            // 其他格式通过 MediaRecorder 编码，结果为空则跳过，绝不写入 0KB 文件
+            let oggBlob = null;
+            if (srcIsOgg) {
+              oggBlob = new Blob([ab], { type: 'audio/ogg' });
+            } else {
+              // 优先用纯 JS 编码器（快），不可用时退回边播边录
+              try {
+                oggBlob = await encodeOggViaJS(audioBuffer);
+              } catch (e) { oggBlob = null; }
+              if (!oggBlob || oggBlob.size === 0) {
+                oggBlob = await recordOggViaMediaRecorder(audioBuffer);
+              }
+              if (!oggBlob || oggBlob.size === 0) {
+                oggBlob = null;
+                log('⚠️ ' + srcFile.name + ' OGG 编码失败，本次跳过 OGG（不写入空文件）');
+              }
+            }
+
+            let wroteAny = false;
+            for (const baseName of writeNames) {
+              if (oggBlob && oggBlob.size > 0) {
+                resultZip.file(baseName + '.ogg', oggBlob);
+                success++;
+                wroteAny = true;
+              }
+              if (wavBlob && wavBlob.size > 0) {
+                resultZip.file(baseName + '.aiff', wavBlob);
+                success++;
+                wroteAny = true;
+              }
+            }
+            if (wroteAny) {
+              log('✅ [' + (i + 1) + '/' + sourceAudioList.length + '] ' + srcFile.name + ' → 已生成 ' + writeNames.join('/') + ' (ogg+aiff)');
+            } else {
+              fail++;
+              log('❌ [' + (i + 1) + '/' + sourceAudioList.length + '] ' + srcFile.name + ' 未生成任何有效文件');
+            }
+          } catch (err) {
+            fail++;
+            log('❌ [' + (i + 1) + '/' + sourceAudioList.length + '] ' + srcFile.name + ' 处理失败: ' + err.message);
+          }
+        }
+
+        if (success === 0) {
+          alert('全部生成失败，请检查音频文件');
+          return;
+        }
+
+        const outBlob = await resultZip.generateAsync({ type: 'blob', compression: 'STORE' });
+        const outName = applyTimeStampToName('aj音效生成_' + sourceAudioList.length + '个音频.zip');
+        saveAs(outBlob, outName);
+        log('✅ 生成完成，成功 ' + success + ' 个文件，失败 ' + fail + ' 个音频源');
+      }
 
       function embedTraceToFontData(data, trace) {
         const markerStr = 'FONT_TRACE_MARK:' + trace;
@@ -3478,7 +4240,7 @@
               }
             }
             if (successCount > 0) {
-              const outBlob = await resultZip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+              const outBlob = await resultZip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
               saveAs(outBlob, '字体打标_' + successCount + '个文件.zip');
               log('✅ 批量打标完成，成功 ' + successCount + ' 个文件');
             }
@@ -3523,32 +4285,51 @@
           document.querySelectorAll('#modeTabs .mode-tab').forEach(t => t.classList.remove('active'));
           this.classList.add('active');
           currentMode = this.dataset.mode;
+          
           if (currentMode === 'bds2bdi') {
             uploadIcon.textContent = '📂';
             uploadText.textContent = '点击或拖拽上传 .bds 皮肤包';
             uploadHint.textContent = '支持 .bds / .zip (可多选)';
             audioReplaceArea.style.display = 'none';
+            audioGenArea.style.display = 'none';
+            genAudioBtn.style.display = 'none';
           } else if (currentMode === 'bdi2bds') {
             uploadIcon.textContent = '📂';
             uploadText.textContent = '点击或拖拽上传 .bdi 皮肤包';
             uploadHint.textContent = '支持 .bdi / .zip (可多选)';
             audioReplaceArea.style.display = 'none';
+            audioGenArea.style.display = 'none';
+            genAudioBtn.style.display = 'none';
           } else if (currentMode === 'audioExtract') {
             uploadIcon.textContent = '🎵';
             uploadText.textContent = '上传皮肤包提取音效';
             uploadHint.textContent = '支持 .bds / .bdi / .zip';
             audioReplaceArea.style.display = 'none';
+            audioGenArea.style.display = 'none';
+            genAudioBtn.style.display = 'none';
           } else if (currentMode === 'audioConvert') {
             uploadIcon.textContent = '🔄';
             uploadText.textContent = '上传皮肤包转换音效格式';
             uploadHint.textContent = '支持 .bds / .bdi / .zip';
             audioReplaceArea.style.display = 'none';
+            audioGenArea.style.display = 'none';
+            genAudioBtn.style.display = 'none';
           } else if (currentMode === 'audioReplace') {
             uploadIcon.textContent = '🔊';
             uploadText.textContent = '上传皮肤包替换音效';
             uploadHint.textContent = '支持 .bds / .bdi / .zip';
             audioReplaceArea.style.display = 'block';
+            audioGenArea.style.display = 'none';
+            genAudioBtn.style.display = 'none';
+          } else if (currentMode === 'audioGen') {
+            uploadIcon.textContent = '🎼';
+            uploadText.textContent = '点击或拖拽上传皮肤包 (.bds/.bdi/.zip) 提取并生成';
+            uploadHint.textContent = '也可以直接在下方导入独立音频/音频包';
+            audioReplaceArea.style.display = 'none';
+            audioGenArea.style.display = 'block';
+            genAudioBtn.style.display = 'flex';
           }
+          
           selectedFiles = [];
           compressedFiles = [];
           isCompressed = false;
@@ -3675,7 +4456,26 @@
 
         const result = await autoDecryptFileList(valid, '拖拽/选择');
 
-        selectedFiles = result.files;
+        // 统一删除包内 GSCopyright.json，保证后续所有功能都不携带该文件
+        const cleanedFiles = [];
+        for (const f of result.files) {
+          try {
+            const ab = await f.arrayBuffer();
+            const z = await JSZip.loadAsync(ab);
+            const removed = removeGSCopyrightFromZip(z, log);
+            if (removed > 0) {
+              const blob = await z.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
+              cleanedFiles.push(new File([blob], f.name, { type: 'application/zip' }));
+              log('🗑️ 已删除 GSCopyright.json: ' + f.name);
+            } else {
+              cleanedFiles.push(f);
+            }
+          } catch (e) {
+            cleanedFiles.push(f);
+          }
+        }
+
+        selectedFiles = cleanedFiles;
         compressedFiles = [];
         isCompressed = false;
         clearEditorSessions();
@@ -3685,6 +4485,11 @@
         extractResult.classList.remove('show');
         checkResult.classList.remove('show');
         maybeShowDecryptToast(result, valid.length);
+
+        // 生成aj音效模式下，导入皮肤包后立即提取包内音效到试听列表（异步，不阻塞导入）
+        if (currentMode === 'audioGen' && cleanedFiles.length > 0) {
+          extractSkinAudioForPreview(cleanedFiles);
+        }
       }
 
       dropZone.addEventListener('click', () => fileInput.click());
@@ -4024,7 +4829,15 @@
         }
       }
       async function processFileEncrypt(file) {
-        const arrayBuffer = await file.arrayBuffer();
+        let arrayBuffer = await file.arrayBuffer();
+        // 加密前先尝试以 zip 打开并删除 GSCopyright.json（已加密打不开的文件跳过）
+        try {
+          const zip = await JSZip.loadAsync(arrayBuffer);
+          if (removeGSCopyrightFromZip(zip, encryptLog) > 0) {
+            arrayBuffer = await zip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE', compressionOptions: { level: 1 } });
+            encryptLog('🗑️ 已删除 GSCopyright.json: ' + file.name);
+          }
+        } catch (e) {}
         const data = new Uint8Array(arrayBuffer);
         const result = processEncryptWithChoice(data, file.name);
         return {
@@ -4039,8 +4852,18 @@
         const arrayBuffer = await file.arrayBuffer();
         const data = new Uint8Array(arrayBuffer);
         const result = processDecryptByFileType(data, file.name);
+        let outData = result.data;
+        // 解密后尝试以 zip 打开并删除 GSCopyright.json
+        try {
+          const zip = await JSZip.loadAsync(outData);
+          if (removeGSCopyrightFromZip(zip, encryptLog) > 0) {
+            const cleaned = await zip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE', compressionOptions: { level: 1 } });
+            outData = new Uint8Array(cleaned);
+            encryptLog('🗑️ 已删除 GSCopyright.json: ' + file.name);
+          }
+        } catch (e) {}
         return {
-          processedBlob: new Blob([result.data], { type: 'application/octet-stream' }),
+          processedBlob: new Blob([outData], { type: 'application/octet-stream' }),
           processedName: applyTimeStampToName(file.name),
           localCount: result.localCount,
           centralCount: result.centralCount,
@@ -4348,6 +5171,7 @@
             try {
               const buf = await file.arrayBuffer();
               const zip = await JSZip.loadAsync(buf);
+              removeGSCopyrightFromZip(zip, rongcaiLogMsg);
               rongcaiSourceZips.push(zip);
               rongcaiLogMsg(`✅ 解析成功：${file.name}`);
             } catch (err) {
@@ -4478,10 +5302,12 @@
             const fileName = rongcaiSourceFiles[i] ? rongcaiSourceFiles[i].name : `unknown_${i}.zip`;
             const ext = fileName.split('.').pop().toLowerCase();
             try {
+              removeGSCopyrightFromZip(zip, rongcaiLogMsg);
               const abjEntries = [];
               for (const k of Object.keys(zip.files)) {
                 const e = zip.files[k];
                 if (e.dir) continue;
+                if (isGSCopyrightFile(k)) continue;
                 const base = k.split('/').pop().toLowerCase();
                 if (base === 'abj.png') abjEntries.push(k);
               }
@@ -4532,6 +5358,7 @@
                 outputName = `${newBaseName}-${suffix}.${ext}`;
               }
               outputName = applyTimeStampToName(outputName);
+              removeGSCopyrightFromZip(zip, rongcaiLogMsg);
               const zipBuf = await zip.generateAsync({ type: "arraybuffer", compression: "DEFLATE" });
               rongcaiOutputZips.push(new Blob([zipBuf], { type: 'application/zip' }));
               rongcaiOutputNames.push(outputName);
@@ -4607,6 +5434,8 @@
       updateFileStatus(null);
       extractResult.classList.remove('show');
       audioReplaceArea.style.display = 'none';
+      audioGenArea.style.display = 'none';
+      genAudioBtn.style.display = 'none';
       executeSelectedBtn.disabled = true;
 
     })();
