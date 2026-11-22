@@ -2601,37 +2601,26 @@
           else if (lower.endsWith('.aiff')) audioGroups[groupKey].aiff = key;
         }
 
-        // 补齐方式跟随转换模式下拉框：快速模式只改后缀，完整模式真转码
-        const complementMode = (typeof convertModeSelect !== 'undefined' && convertModeSelect) ? convertModeSelect.value : 'fast';
-
+        // 补齐永远真转码：补齐本身就是跨格式（aiff 包补 ogg / ogg 包补 aiff），
+        // 只改后缀会产出手机播放器打不开的文件（Prepare failed），因此不受快速模式影响
         for (const [groupKey, group] of Object.entries(audioGroups)) {
           if (group.ogg && !group.aiff) {
             const oggBlob = await zip.file(group.ogg).async('blob');
             try {
-              let converted;
-              if (complementMode === 'fast') {
-                converted = new Blob([await oggBlob.arrayBuffer()], { type: 'audio/aiff' });
-              } else {
-                converted = await convertAudioBlob(oggBlob, 'aiff', logFunc);
-              }
+              const converted = await convertAudioBlob(oggBlob, 'aiff', logFunc);
               const newPath = group.dir + group.base + '.aiff';
               zip.file(newPath, converted);
-              if (logFunc) logFunc('🔊 补全音效' + (complementMode === 'fast' ? '(快速)' : '') + ': ' + newPath);
+              if (logFunc) logFunc('🔊 补全音效: ' + newPath);
             } catch (e) {
               if (logFunc) logFunc('⚠️ 补全失败，已跳过: ' + group.base + '.aiff');
             }
           } else if (group.aiff && !group.ogg) {
             const aiffBlob = await zip.file(group.aiff).async('blob');
             try {
-              let converted;
-              if (complementMode === 'fast') {
-                converted = new Blob([await aiffBlob.arrayBuffer()], { type: 'audio/ogg' });
-              } else {
-                converted = await convertAudioBlob(aiffBlob, 'ogg', logFunc);
-              }
+              const converted = await convertAudioBlob(aiffBlob, 'ogg', logFunc);
               const newPath = group.dir + group.base + '.ogg';
               zip.file(newPath, converted);
-              if (logFunc) logFunc('🔊 补全音效' + (complementMode === 'fast' ? '(快速)' : '') + ': ' + newPath);
+              if (logFunc) logFunc('🔊 补全音效: ' + newPath);
             } catch (e) {
               if (logFunc) logFunc('⚠️ 补全失败，已跳过: ' + group.base + '.ogg');
             }
