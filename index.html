@@ -766,6 +766,24 @@
   </div>
 
   <script>(function() {
+      /* 打包导出时统一把包内文件时间刷成导出时刻，避免保留原包旧时间 */
+      try {
+        const __origGenerateAsync = JSZip.prototype.generateAsync;
+        JSZip.prototype.generateAsync = function() {
+          try {
+            /* 库按 UTC 写入时间字段，手机按本地时间读取会差时区；
+               这里预先加上时区偏移，让包内时间字段直接等于本地时间 */
+            const now = new Date();
+            const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+            this.forEach(function(path, entry) {
+              if (!entry || typeof entry !== 'object') return;
+              entry.date = local;
+              if (entry._data && entry._data.date) entry._data.date = local;
+            });
+          } catch (e) {}
+          return __origGenerateAsync.apply(this, arguments);
+        };
+      } catch (e) {}
       const optTimeStamp = document.getElementById('optTimeStamp');
       function getTimeStampSuffix() {
         if (!optTimeStamp || !optTimeStamp.checked) return '';
