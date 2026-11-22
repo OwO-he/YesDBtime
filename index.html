@@ -868,7 +868,7 @@
       const convertModeSelect = document.getElementById('convertModeSelect');
       const logBox = document.getElementById('logBox');
       const logFloatBtn = document.getElementById('logFloatBtn');
-      let logHidden = false;
+      let logHidden = true;
       logFloatBtn.addEventListener('click', function() {
         logHidden = !logHidden;
         logBox.style.display = logHidden ? 'none' : '';
@@ -1460,11 +1460,11 @@
         line.textContent = msg;
         logBox.appendChild(line);
         logBox.scrollTop = logBox.scrollHeight;
-        if (logHidden) { logHidden = false; logBox.style.display = ''; }
+        if (logHidden) { logBox.style.display = 'none'; }
         logFloatBtn.style.display = 'flex';
-        logFloatBtn.textContent = '✕';
+        logFloatBtn.textContent = logHidden ? '📋' : '✕';
       }
-      function clearLog() { logBox.innerHTML = ''; logFloatBtn.style.display = 'none'; logHidden = false; }
+      function clearLog() { logBox.innerHTML = ''; logFloatBtn.style.display = 'none'; logHidden = true; }
 
       function formatSize(bytes) {
         if (bytes < 1024) return bytes + ' B';
