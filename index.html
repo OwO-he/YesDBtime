@@ -473,6 +473,10 @@
         <div class="upload-hint" id="uploadHint">支持 .bds / .bdi / .zip</div>
         <input type="file" id="fileInput" multiple style="display:none;">
       </div>
+      <label style="display:flex;align-items:center;gap:6px;margin:6px 0 0;font-weight:500;color:var(--text-secondary);font-size:14px;cursor:pointer;">
+        <input type="checkbox" id="continueAddFiles" checked> ➕ 继续添加（新文件追加到已选列表，不覆盖）
+      </label>
+      <button class="action-btn secondary" id="clearFilesBtn" style="margin:6px 0 0;" disabled>🗑️ 清空文件</button>
 
       <div id="fileStatus" class="file-status" style="display: none;">
         <span class="file-name" id="fileName">未命名</span>
@@ -535,6 +539,7 @@
         <button class="mark-inline-btn mark-write" id="btnMark" disabled>✍️ 写入标记</button>
         <button class="mark-inline-btn mark-check" id="btnCheck">🔍 查验标记</button>
         <button class="mark-inline-btn mark-download" id="btnDownloadMarked" disabled>📥 下载</button>
+        <button class="mark-inline-btn mark-download" id="btnDownloadMarkedZip" disabled>📦 下载为 zip</button>
         <span class="mark-status" id="markStatus">⏳ 等待文件</span>
         <label style="display:flex;align-items:center;gap:6px;margin-left:auto;font-weight:500;color:var(--text-secondary);font-size:14px;cursor:pointer;">
           <input type="checkbox" id="optTimeStamp" style="width:16px;height:16px;accent-color:var(--color-accent);cursor:pointer;">
@@ -562,12 +567,18 @@
       <div class="mini-row">
         <button class="action-btn secondary" id="replaceDemoOnlyBtn" disabled>🖼️ 仅替换demo.png</button>
         <button class="action-btn secondary" id="downloadCompressedBtn" disabled>💾 下载压缩后文件</button>
+        <button class="action-btn secondary" id="downloadCompressedZipBtn" disabled>📦 下载为 zip</button>
         <button class="action-btn replace-audio" id="replaceAudioBtn" disabled>🔊 替换音效并下载</button>
+        <button class="action-btn secondary" id="replaceAudioZipBtn" disabled>📦 下载为 zip</button>
         <button class="action-btn genaudio" id="genAudioBtn" style="display:none;" disabled>🎼 生成aj音效并下载</button>
       </div>
 
       <div class="action-row" style="margin-top: 8px;">
         <button class="action-btn" id="executeSelectedBtn" style="background: linear-gradient(135deg, #4a9eff, #6c5ce7);">▶ 执行选中操作</button>
+      </div>
+
+      <div class="action-row" style="margin-top: 8px;">
+        <button class="action-btn" id="exportZipBtn" style="background: linear-gradient(135deg, #34c77b, #1fa864);" disabled>📦 导出为 zip 格式</button>
       </div>
 
       <div class="audio-row" id="audioRow">
@@ -595,6 +606,7 @@
             <option value="">-- 请先选包 --</option>
           </select>
           <button class="text-editor-btn save-btn" id="editorSaveBtn" disabled>💾 保存并下载当前包</button>
+          <button class="text-editor-btn save-btn" id="editorSaveZipBtn" disabled>📦 保存为 zip</button>
           <button class="text-editor-btn pack-btn" id="editorPackAllBtn" disabled>📦 打包下载（全部）</button>
           <button class="text-editor-btn pack-edited-btn" id="editorPackEditedBtn" disabled>📦 打包下载（仅编辑过的）</button>
           <span class="editor-status" id="editorStatus">⏳ 等待加载</span>
@@ -649,6 +661,9 @@
 
       <div class="action-row" style="margin-bottom: 8px;">
         <button class="action-btn secondary" id="encryptContinueBtn" style="background: #e8f0fe; color: #1a4c8c; border: 1px solid #a8c7fa; flex: 0 1 auto;" disabled>📥 从“继续编辑”池导入文件</button>
+        <label style="display:flex;align-items:center;gap:6px;font-weight:500;color:var(--text-secondary);font-size:14px;cursor:pointer;flex:0 1 auto;">
+          <input type="checkbox" id="encryptZipExport"> 📦 导出为 zip 格式
+        </label>
       </div>
 
       <div class="file-list" id="encryptFileList"></div>
@@ -696,6 +711,13 @@
       <div class="action-row">
         <button class="action-btn rongcai" id="rongcaiProcBtn" disabled onclick="startProcess()">▶ 开始批量处理</button>
         <button class="action-btn secondary" id="rongcaiDlBtn" disabled onclick="triggerDownload()">⬇ 下载全部结果</button>
+        <label style="display:flex;align-items:center;gap:6px;font-weight:500;color:var(--text-secondary);font-size:14px;cursor:pointer;">
+          <input type="checkbox" id="rongcaiZipExport"> 📦 导出为 zip 格式
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-weight:500;color:var(--text-secondary);font-size:14px;cursor:pointer;">
+          <input type="checkbox" id="rongcaiContinueAdd" checked> ➕ 继续添加（不覆盖）
+        </label>
+        <button class="action-btn secondary" id="rongcaiClearBtn" disabled>🗑️ 清空</button>
         <span class="badge rongcai-badge" id="rongcaiStatusBadge">等待文件</span>
       </div>
       <div id="rongcaiStatusList" style="font-size:12px; margin-top:10px; max-height:150px; overflow-y:auto;"></div>
@@ -728,6 +750,23 @@
         <pre id="fontExtractContent" style="margin-top:6px;font-size:13px;white-space:pre-wrap;word-break:break-all;"></pre>
       </div>
     </div>
+
+    <details style="margin:14px 0 4px;padding:0;background:var(--bg-subtle);border-radius:14px;border:1px solid rgba(0,0,0,0.06);overflow:hidden;">
+      <summary style="padding:10px 16px;font-size:0.82rem;font-weight:600;color:var(--text-main);cursor:pointer;user-select:none;list-style-position:inside;">📜 更新日志（v4.32 · 2026-11-25）</summary>
+      <div style="padding:2px 16px 12px;font-size:0.76rem;color:var(--text-light);line-height:1.7;">
+        <p style="margin:6px 0 2px;font-weight:600;color:var(--text-main);">🧹 清理与导出</p>
+        <ul style="margin:2px 0 8px;padding-left:18px;">
+          <li>所有功能产出的包统一删除 GSCopyright.json</li>
+          <li>日间/夜间子文件夹内不再保留 demo.png</li>
+          <li>自动清除 __MACOSX / .DS_Store 苹果系统残留文件</li>
+          <li>新增独立「📦 导出为 zip 格式」按钮</li>
+          <li>压缩包内文件时间修正为导出时刻的本地时间</li>
+          <li>加密/解密、融彩转换支持勾选按 zip 格式输出</li>
+          <li>皮肤工具、融彩转换支持勾选「继续添加」批量追加皮肤包</li>
+          <li>「继续添加」改为默认勾选，皮肤工具、融彩转换新增「🗑️ 清空」按钮</li>
+        </ul>
+      </div>
+    </details>
 
     <details style="margin:14px 0 4px;padding:0;background:var(--bg-subtle);border-radius:14px;border:1px solid rgba(0,0,0,0.06);overflow:hidden;">
       <summary style="padding:10px 16px;font-size:0.82rem;font-weight:600;color:var(--text-main);cursor:pointer;user-select:none;list-style-position:inside;">📜 更新日志（v4.31 · 2026-11-21）</summary>
@@ -768,9 +807,23 @@
   <script>(function() {
       /* 打包导出时统一把包内文件时间刷成导出时刻，避免保留原包旧时间 */
       try {
+        /* 载入压缩包时立即清理：任何功能读到的包都不带 GSCopyright.json 和日间/夜间 demo.png */
+        const __origLoadAsync = JSZip.prototype.loadAsync;
+        JSZip.prototype.loadAsync = function() {
+          const result = __origLoadAsync.apply(this, arguments);
+          if (result && typeof result.then === 'function') {
+            return result.then(function(zip) {
+              try { sanitizeZipEntries(zip, null); } catch (e) {}
+              return zip;
+            });
+          }
+          return result;
+        };
         const __origGenerateAsync = JSZip.prototype.generateAsync;
         JSZip.prototype.generateAsync = function() {
           try {
+            /* 导出前兜底再清一遍，保证任何操作产出的包都不携带 */
+            sanitizeZipEntries(this, null);
             /* 库按 UTC 写入时间字段，手机按本地时间读取会差时区；
                这里预先加上时区偏移，让包内时间字段直接等于本地时间 */
             const now = new Date();
@@ -828,6 +881,41 @@
         return removed;
       }
 
+      /* 日间(light)/夜间(dark)子文件夹内的 demo.png 不保留 */
+      function isLightDarkDemoFile(name) {
+        if (!name) return false;
+        const p = String(name).replace(/\\/g, '/').toLowerCase();
+        const segs = p.split('/');
+        if (segs[segs.length - 1] !== 'demo.png') return false;
+        return segs.slice(0, -1).some(s => s === 'light' || s === 'dark');
+      }
+      /* 苹果系统残留：__MACOSX 文件夹（连同内部所有内容）与 .DS_Store */
+      function isMacJunkEntry(name) {
+        if (!name) return false;
+        const p = String(name).replace(/\\/g, '/').toLowerCase();
+        const segs = p.split('/');
+        if (segs.some(s => s === '__macosx')) return true;
+        return segs[segs.length - 1] === '.ds_store';
+      }
+      /* 统一清理：GSCopyright.json + 日间/夜间子文件夹内的 demo.png + 苹果残留 */
+      function sanitizeZipEntries(zip, logFunc) {
+        let removedGS = 0, removedDemo = 0, removedMac = 0;
+        const allNames = Object.keys(zip.files);
+        for (const name of allNames) {
+          const entry = zip.files[name];
+          if (!entry) continue;
+          if (isGSCopyrightFile(name)) { if (!entry.dir) removedGS++; zip.remove(name); }
+          else if (isLightDarkDemoFile(name)) { if (!entry.dir) removedDemo++; zip.remove(name); }
+          else if (isMacJunkEntry(name)) { if (!entry.dir) removedMac++; zip.remove(name); }
+        }
+        if (typeof logFunc === 'function') {
+          if (removedGS > 0) logFunc('🗑️ 已删除 GSCopyright.json × ' + removedGS);
+          if (removedDemo > 0) logFunc('🗑️ 已删除 日间/夜间 子文件夹内的 demo.png × ' + removedDemo);
+          if (removedMac > 0) logFunc('🗑️ 已删除 __MACOSX/.DS_Store 苹果残留 × ' + removedMac);
+        }
+        return { removedGS, removedDemo, removedMac };
+      }
+
       const toastContainer = document.getElementById('toastContainer');
       let currentToastEl = null;
       let currentToastTimer = null;
@@ -880,6 +968,7 @@
       const convertBtn = document.getElementById('convertBtn');
       const replaceDemoOnlyBtn = document.getElementById('replaceDemoOnlyBtn');
       const downloadCompressedBtn = document.getElementById('downloadCompressedBtn');
+      const downloadCompressedZipBtn = document.getElementById('downloadCompressedZipBtn');
       const extractAudioBtn = document.getElementById('extractAudioBtn');
       const convertAudioBtn = document.getElementById('convertAudioBtn');
       const audioConvertDirection = document.getElementById('audioConvertDirection');
@@ -924,6 +1013,8 @@
       const audioReplaceCount = document.getElementById('audioReplaceCount');
       const clearAudioReplaceBtn = document.getElementById('clearAudioReplaceBtn');
       const replaceAudioBtn = document.getElementById('replaceAudioBtn');
+      const replaceAudioZipBtn = document.getElementById('replaceAudioZipBtn');
+      let lastAudioReplaceOutputs = [];
 
       const audioGenArea = document.getElementById('audioGenArea');
       const audioGenInput = document.getElementById('audioGenInput');
@@ -956,6 +1047,7 @@
       const btnMark = document.getElementById('btnMark');
       const btnCheck = document.getElementById('btnCheck');
       const btnDownloadMarked = document.getElementById('btnDownloadMarked');
+      const btnDownloadMarkedZip = document.getElementById('btnDownloadMarkedZip');
       const markStatus = document.getElementById('markStatus');
       const checkResult = document.getElementById('checkResult');
       const resultContent = document.getElementById('resultContent');
@@ -963,6 +1055,7 @@
       const editorPackageSelect = document.getElementById('editorPackageSelect');
       const editorFileSelect = document.getElementById('editorFileSelect');
       const editorSaveBtn = document.getElementById('editorSaveBtn');
+      const editorSaveZipBtn = document.getElementById('editorSaveZipBtn');
       const editorPackAllBtn = document.getElementById('editorPackAllBtn');
       const editorPackEditedBtn = document.getElementById('editorPackEditedBtn');
       const editorTextarea = document.getElementById('editorTextarea');
@@ -976,6 +1069,8 @@
       const editorStatus = document.getElementById('editorStatus');
 
       let selectedFiles = [];
+      const continueAddFilesCb = document.getElementById('continueAddFiles');
+      const clearFilesBtn = document.getElementById('clearFilesBtn');
       let compressedFiles = [];
       let customDemoFile = null;
       let customDemoBlob = null;
@@ -1026,7 +1121,7 @@
         editorHighlight.innerHTML = '';
         editorFileSelect.innerHTML = '<option value="">-- 请先选包 --</option>';
         editorFileSelect.disabled = true;
-        editorSaveBtn.disabled = true;
+        editorSaveZipBtn.disabled = editorSaveBtn.disabled = true;
         editorPackEditedBtn.disabled = true;
         editorStatus.textContent = '⏳ 等待加载';
         editorStatus.className = 'editor-status';
@@ -1403,16 +1498,14 @@
           if (!shouldProcessMarkFile(name)) continue;
           const buf = await zip.files[name].async('uint8array');
           if (!isProbablyText(buf)) continue;
-          let text;
-          try { text = new TextDecoder('utf-8', { fatal: true }).decode(buf); }
-          catch { continue; }
+          const text = new TextDecoder('utf-8', { fatal: false }).decode(buf);
           const styleInfo = analyzeLastStyle(text);
           let seed = (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0;
           for (let i = 0; i < name.length; i++) seed = (seed * 31 + name.charCodeAt(i)) >>> 0;
           const rng = makeRng(seed);
           const camo = buildCamouflage(styleInfo, items, rng);
           const newText = appendGroupMark(text, camo);
-          zip.file(name, newText);
+          zip.file(name, new TextEncoder().encode(newText));
         }
         return zip;
       }
@@ -1424,9 +1517,7 @@
           if (!shouldProcessMarkFile(name)) continue;
           const buf = await zip.files[name].async('uint8array');
           if (!isProbablyText(buf)) continue;
-          let text;
-          try { text = new TextDecoder('utf-8', { fatal: true }).decode(buf); }
-          catch { continue; }
+          const text = new TextDecoder('utf-8', { fatal: false }).decode(buf);
 
           const sections = [...text.matchAll(/^\[([A-Za-z0-9_]+)\]\s*$/gm)];
           if (sections.length === 0) continue;
@@ -1507,6 +1598,7 @@
 
       function updateFileStatus(files) {
         if (files && files.length > 0) {
+          clearFilesBtn.disabled = false;
           const names = files.map(f => f.name).join(', ');
           const totalSize = files.reduce((acc, f) => acc + f.size, 0);
           fileStatus.style.display = 'flex';
@@ -1528,8 +1620,10 @@
           extractAudioBtn.disabled = false;
           convertAudioBtn.disabled = false;
           downloadCompressedBtn.disabled = !isCompressed;
+          downloadCompressedZipBtn.disabled = !isCompressed;
           replaceAudioBtn.disabled = (currentMode !== 'audioReplace' || audioReplaceFiles.length === 0);
           executeSelectedBtn.disabled = false;
+          exportZipBtn.disabled = false;
           btnMark.disabled = false;
           
           // 如果是生成音效模式，导入皮肤包后直接激活生成按钮
@@ -1557,26 +1651,29 @@
                 session.infoOptions.map(p => `<option value="${p}">${escapeHtml(p)}</option>`).join('');
               if (session.currentFilePath) editorFileSelect.value = session.currentFilePath;
               editorFileSelect.disabled = false;
-              editorSaveBtn.disabled = false;
+              editorSaveZipBtn.disabled = editorSaveBtn.disabled = false;
             } else {
               clearEditorSessions();
             }
           } else {
             editorFileSelect.innerHTML = '<option value="">-- 请先选包 --</option>';
             editorFileSelect.disabled = true;
-            editorSaveBtn.disabled = true;
+            editorSaveZipBtn.disabled = editorSaveBtn.disabled = true;
           }
           refreshPackEditedBtn();
         } else {
           fileStatus.style.display = 'none';
+          clearFilesBtn.disabled = true;
           compressBtn.disabled = true;
           convertBtn.disabled = true;
           replaceDemoOnlyBtn.disabled = true;
           extractAudioBtn.disabled = true;
           convertAudioBtn.disabled = true;
           downloadCompressedBtn.disabled = true;
+          downloadCompressedZipBtn.disabled = true;
           replaceAudioBtn.disabled = true;
           executeSelectedBtn.disabled = true;
+          exportZipBtn.disabled = true;
           btnMark.disabled = true;
           
           if (currentMode === 'audioGen') {
@@ -1599,7 +1696,7 @@
         if (pkgIdx === '') {
           editorFileSelect.innerHTML = '<option value="">-- 请先选包 --</option>';
           editorFileSelect.disabled = true;
-          editorSaveBtn.disabled = true;
+          editorSaveZipBtn.disabled = editorSaveBtn.disabled = true;
           return;
         }
         const files = getFilesToProcess();
@@ -1647,7 +1744,7 @@
           editorFileSelect.value = session.currentFilePath;
           await loadEditorFileFor(fileNameStr, session.currentFilePath);
         } else {
-          editorSaveBtn.disabled = true;
+          editorSaveZipBtn.disabled = editorSaveBtn.disabled = true;
           editorTextarea.value = '';
           editorHighlight.innerHTML = '';
           editorStatus.textContent = '📄 已选包：' + fileNameStr + '，请选择包内文件';
@@ -1658,7 +1755,7 @@
       editorFileSelect.addEventListener('change', async function() {
         const filePath = this.value;
         if (filePath === '') {
-          editorSaveBtn.disabled = true;
+          editorSaveZipBtn.disabled = editorSaveBtn.disabled = true;
           editorTextarea.value = '';
           editorHighlight.innerHTML = '';
           editorStatus.textContent = '📄 已选包：' + editorActiveFileName + '，请选择包内文件';
@@ -1708,7 +1805,7 @@
           editorFindNextBtn.disabled = false;
           editorReplaceBtn.disabled = false;
           editorReplaceAllBtn.disabled = false;
-          editorSaveBtn.disabled = false;
+          editorSaveZipBtn.disabled = editorSaveBtn.disabled = false;
 
           const le = session.lineEndings[filePath] === 'crlf' ? 'CRLF' : 'LF';
           editorStatus.textContent = '📄 ' + fileNameStr + ' / ' + filePath + ' [' + le + ']' + (session.edited ? '（已编辑）' : '');
@@ -1949,7 +2046,7 @@
         renderHighlight();
       });
 
-      editorSaveBtn.addEventListener('click', async function() {
+      async function saveEditorPackage(asZip) {
         if (!editorActiveFileName) { alert('请先加载文件'); return; }
         const session = editorSessions[editorActiveFileName];
         if (!session) { alert('请先加载文件'); return; }
@@ -1961,7 +2058,9 @@
             type: 'blob', compression: 'DEFLATE',
             compressionOptions: { level: 1 }
           });
-          const outName = applyTimeStampToName(editorActiveFileName);
+          const outName = asZip
+            ? applyTimeStampToName(editorActiveFileName.replace(/\.(bds|bdi|zip)$/i, '') + '.zip')
+            : applyTimeStampToName(editorActiveFileName);
           const outFile = new File([outBlob], outName, { type: 'application/zip' });
 
           let replaced = false;
@@ -1984,7 +2083,9 @@
           alert('保存失败: ' + err.message);
           log('❌ 文本编辑保存失败: ' + err.message);
         }
-      });
+      }
+      editorSaveBtn.addEventListener('click', function() { saveEditorPackage(false); });
+      editorSaveZipBtn.addEventListener('click', function() { saveEditorPackage(true); });
 
       editorPackAllBtn.addEventListener('click', async function() {
         if (selectedFiles.length === 0) { alert('没有可下载的文件'); return; }
@@ -2060,6 +2161,7 @@
           markStatus.textContent = '✅ ' + files.length + ' 个文件标记已植入: ' + markValue;
           markStatus.className = 'mark-status done';
           btnDownloadMarked.disabled = false;
+          btnDownloadMarkedZip.disabled = false;
           log('✅ 隐形标记植入成功，已暂存到“继续编辑”池');
         } catch (error) {
           alert('打标失败：' + error.message);
@@ -2168,6 +2270,27 @@
         }
       });
 
+      btnDownloadMarkedZip.addEventListener('click', async () => {
+        await flushEditorToFiles();
+        const files = getFilesToProcess();
+        if (!files || files.length === 0) { alert('请先打标！'); return; }
+        btnDownloadMarkedZip.disabled = true;
+        btnDownloadMarkedZip.textContent = '⏳ 打包中...';
+        try {
+          const zip = new JSZip();
+          for (const file of files) zip.file(file.name, file);
+          const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
+          saveAs(blob, '批量打标_' + files.length + '个文件.zip');
+          log('📦 已按 zip 格式下载，共 ' + files.length + ' 个文件');
+        } catch (err) {
+          log('❌ zip 下载失败: ' + err.message);
+          alert('zip 下载失败: ' + err.message);
+        } finally {
+          btnDownloadMarkedZip.disabled = false;
+          btnDownloadMarkedZip.textContent = '📦 下载为 zip';
+        }
+      });
+
       executeSelectedBtn.addEventListener('click', async function() {
         await flushEditorToFiles();
         const files = getFilesToProcess();
@@ -2201,6 +2324,41 @@
         } finally {
           executeSelectedBtn.disabled = false;
           executeSelectedBtn.textContent = '▶ 执行选中操作';
+        }
+      });
+
+      /* 独立的 zip 导出：把当前包（含已做过的编辑）以 .zip 后缀下载 */
+      exportZipBtn.addEventListener('click', async function() {
+        await flushEditorToFiles();
+        const files = getFilesToProcess();
+        if (!files || files.length === 0) { alert('请先上传皮肤包文件'); return; }
+        exportZipBtn.disabled = true;
+        exportZipBtn.textContent = '⏳ 导出中...';
+        try {
+          const zipOutputs = [];
+          for (const f of files) {
+            /* 过一遍载入+导出，确保清理和时间刷新对直接导出同样生效 */
+            const zip = await JSZip.loadAsync(await f.arrayBuffer());
+            const outBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
+            const baseName = f.name.replace(/\.(bds|bdi|zip)$/i, '');
+            const outName = applyTimeStampToName(baseName + '.zip');
+            zipOutputs.push(new File([outBlob], outName, { type: 'application/zip' }));
+            log('📦 已导出: ' + outName);
+          }
+          if (zipOutputs.length === 1) {
+            saveAs(zipOutputs[0], zipOutputs[0].name);
+          } else {
+            const resultZip = new JSZip();
+            zipOutputs.forEach(f => resultZip.file(f.name, f));
+            const outBlob = await resultZip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
+            saveAs(outBlob, '导出zip_' + zipOutputs.length + '个文件.zip');
+          }
+          log('✅ zip 导出完成，共 ' + zipOutputs.length + ' 个文件');
+        } catch (err) {
+          log('❌ zip 导出失败: ' + err.message);
+        } finally {
+          exportZipBtn.disabled = false;
+          exportZipBtn.textContent = '📦 导出为 zip 格式';
         }
       });
 
@@ -2847,6 +3005,7 @@
         isCompressed = true;
         compressedFiles = newCompressedFiles;
         downloadCompressedBtn.disabled = false;
+        downloadCompressedZipBtn.disabled = false;
         isProcessing = false;
         log('✅ 压缩完成');
       }
@@ -3106,6 +3265,7 @@
         compressBtn.disabled = false;
         compressBtn.textContent = '🗜️ 压缩图片';
         downloadCompressedBtn.disabled = false;
+        downloadCompressedZipBtn.disabled = false;
         updateFileStatus(selectedFiles);
         log('✅ 压缩完成');
         const outFiles = compressedFiles.map(f => new File([f.blob], f.name));
@@ -3127,6 +3287,24 @@
               saveAs(blob, '压缩后_' + compressedFiles.length + '个文件.zip');
               log('💾 已下载压缩后的文件包');
             });
+        }
+      });
+
+      downloadCompressedZipBtn.addEventListener('click', async function() {
+        if (!isCompressed || compressedFiles.length === 0) { alert('请先压缩图片'); return; }
+        downloadCompressedZipBtn.disabled = true;
+        downloadCompressedZipBtn.textContent = '⏳ 打包中...';
+        try {
+          const resultZip = new JSZip();
+          compressedFiles.forEach(f => resultZip.file(f.name, f.blob));
+          const blob = await resultZip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
+          saveAs(blob, '压缩后_' + compressedFiles.length + '个文件.zip');
+          log('📦 已按 zip 格式下载，共 ' + compressedFiles.length + ' 个文件');
+        } catch (err) {
+          log('❌ zip 下载失败: ' + err.message);
+        } finally {
+          downloadCompressedZipBtn.disabled = false;
+          downloadCompressedZipBtn.textContent = '📦 下载为 zip';
         }
       });
 
@@ -3661,6 +3839,8 @@
             }
             const outName = applyTimeStampToName(finalFile.name);
             saveAs(outBlob, outName);
+            lastAudioReplaceOutputs = [{ name: outName, blob: outBlob }];
+            replaceAudioZipBtn.disabled = false;
             setSharedFiles([new File([outBlob], outName)], '音效替换');
             clearEditorSessions();
             log('✅ 音效替换成功，已暂存到“继续编辑”池: ' + outName);
@@ -3674,6 +3854,7 @@
           return;
         }
         const resultZip = new JSZip();
+        lastAudioReplaceOutputs = [];
         for (let idx = 0; idx < targetFiles.length; idx++) {
           const file = targetFiles[idx];
           try {
@@ -3692,6 +3873,7 @@
             }
             const timeStampedName = applyTimeStampToName(finalFile.name);
             resultZip.file(timeStampedName, finalFile);
+            lastAudioReplaceOutputs.push({ name: timeStampedName, blob: new Blob([await finalFile.arrayBuffer()], { type: finalFile.type || 'application/zip' }) });
             log('✅ [' + (idx + 1) + '/' + targetFiles.length + '] 替换成功: ' + timeStampedName);
           } catch (err) {
             log('❌ [' + (idx + 1) + '/' + targetFiles.length + '] ' + file.name + ' 失败: ' + err.message);
@@ -3700,11 +3882,37 @@
         const outBlob = await resultZip.generateAsync({ type: 'blob', compression: 'STORE' });
         const outZipName = '音效替换_' + targetFiles.length + '个文件.zip';
         saveAs(outBlob, outZipName);
+        if (lastAudioReplaceOutputs.length > 0) replaceAudioZipBtn.disabled = false;
         setSharedFiles([new File([outBlob], outZipName)], '批量音效替换');
         clearEditorSessions();
         log('✅ 批量替换完成，已暂存到共享池');
         replaceAudioBtn.disabled = false;
         replaceAudioBtn.textContent = '🔊 替换音效并下载';
+      });
+
+      replaceAudioZipBtn.addEventListener('click', async function() {
+        if (lastAudioReplaceOutputs.length === 0) { alert('请先执行一次音效替换'); return; }
+        replaceAudioZipBtn.disabled = true;
+        replaceAudioZipBtn.textContent = '⏳ 打包中...';
+        try {
+          if (lastAudioReplaceOutputs.length === 1) {
+            const o = lastAudioReplaceOutputs[0];
+            const zipName = o.name.replace(/\.(bds|bdi|zip)$/i, '') + '.zip';
+            saveAs(o.blob, zipName);
+            log('📦 已按 zip 格式下载: ' + zipName);
+          } else {
+            const zip = new JSZip();
+            for (const o of lastAudioReplaceOutputs) zip.file(o.name, o.blob);
+            const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
+            saveAs(blob, '音效替换_' + lastAudioReplaceOutputs.length + '个文件.zip');
+            log('📦 已按 zip 格式下载，共 ' + lastAudioReplaceOutputs.length + ' 个文件');
+          }
+        } catch (err) {
+          log('❌ zip 下载失败: ' + err.message);
+        } finally {
+          replaceAudioZipBtn.disabled = false;
+          replaceAudioZipBtn.textContent = '📦 下载为 zip';
+        }
       });
 
       // ===== 批量生成 aj / ajhc / ajgn 音效 =====
@@ -4458,8 +4666,9 @@
         });
         if (valid.length === 0) { alert('请上传 bds / bdi / zip 文件'); return; }
 
-        clearLog();
-        log('📥 已选择 ' + valid.length + ' 个文件');
+        const continueAdd = continueAddFilesCb.checked && selectedFiles.length > 0;
+        if (!continueAdd) clearLog();
+        log((continueAdd ? '➕ 继续添加 ' : '📥 已选择 ') + valid.length + ' 个文件');
 
         const result = await autoDecryptFileList(valid, '拖拽/选择');
 
@@ -4482,12 +4691,24 @@
           }
         }
 
-        selectedFiles = cleanedFiles;
-        compressedFiles = [];
-        isCompressed = false;
-        clearEditorSessions();
+        if (continueAdd) {
+          const kept = [];
+          for (const f of cleanedFiles) {
+            const dup = selectedFiles.some(x => x.name === f.name && x.size === f.size);
+            if (dup) { log('⚠️ 跳过重复文件: ' + f.name); continue; }
+            kept.push(f);
+          }
+          if (kept.length === 0) { log('没有新增文件'); return; }
+          selectedFiles = selectedFiles.concat(kept);
+          log('➕ 已继续添加 ' + kept.length + ' 个文件（共 ' + selectedFiles.length + ' 个）');
+        } else {
+          selectedFiles = cleanedFiles;
+          compressedFiles = [];
+          isCompressed = false;
+          clearEditorSessions();
+        }
         updateFileStatus(selectedFiles);
-        log('✅ 已选择 ' + selectedFiles.length + ' 个文件（明文）');
+        log('✅ 当前共 ' + selectedFiles.length + ' 个文件（明文）');
         log('🔒 标记系统已就绪');
         extractResult.classList.remove('show');
         checkResult.classList.remove('show');
@@ -4498,6 +4719,29 @@
           extractSkinAudioForPreview(cleanedFiles);
         }
       }
+
+      function clearAllFiles() {
+        selectedFiles = [];
+        compressedFiles = [];
+        customDemoFile = null;
+        customDemoBlob = null;
+        customDemoCompressedBlob = null;
+        audioReplaceZipBlob = null;
+        audioReplaceFiles = [];
+        isCompressed = false;
+        clearEditorSessions();
+        clearLog();
+        extractResult.classList.remove('show');
+        checkResult.classList.remove('show');
+        btnDownloadMarked.disabled = true;
+        btnDownloadMarkedZip.disabled = true;
+        updateFileStatus(selectedFiles);
+        log('🗑️ 已清空全部文件，可重新导入');
+      }
+      clearFilesBtn.addEventListener('click', () => {
+        if (isProcessing) { alert('正在处理中，请稍候再清空'); return; }
+        clearAllFiles();
+      });
 
       dropZone.addEventListener('click', () => fileInput.click());
       dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
@@ -4518,6 +4762,12 @@
       const encryptFileList = document.getElementById('encryptFileList');
       const encryptActionBtn = document.getElementById('encryptActionBtn');
       const encryptDownloadAllBtn = document.getElementById('encryptDownloadAllBtn');
+      const encryptZipExport = document.getElementById('encryptZipExport');
+      function encryptOutputName(item) {
+        const name = item.processedName || item.file.name;
+        if (encryptZipExport && encryptZipExport.checked) return name.replace(/\.(bds|bdi|zip)$/i, '') + '.zip';
+        return name;
+      }
       const encryptClearBtn = document.getElementById('encryptClearBtn');
       const encryptLogBox = document.getElementById('encryptLogBox');
       const encryptDropIcon = document.getElementById('encryptDropIcon');
@@ -4928,7 +5178,7 @@
         const url = URL.createObjectURL(item.processedBlob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = item.processedName || item.file.name;
+        a.download = encryptOutputName(item);
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -4991,7 +5241,7 @@
         encryptDownloadAllBtn.disabled = !encryptFileItems.some(item => item.status === 'done');
         const doneItems = encryptFileItems.filter(item => item.status === 'done' && item.processedBlob);
         if (doneItems.length > 0) {
-          const outFiles = doneItems.map(item => new File([item.processedBlob], item.processedName || item.file.name));
+          const outFiles = doneItems.map(item => new File([item.processedBlob], encryptOutputName(item)));
           setSharedFiles(outFiles, isEncrypt ? '加密' : '解密');
           encryptLog('📥 处理结果已暂存到“继续编辑”池，可在其他工具中继续操作');
         }
@@ -5005,19 +5255,19 @@
           const url = URL.createObjectURL(item.processedBlob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = item.processedName || item.file.name;
+          a.download = encryptOutputName(item);
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
           URL.revokeObjectURL(url);
-          encryptLog('✅ 已下载: ' + (item.processedName || item.file.name));
+          encryptLog('✅ 已下载: ' + encryptOutputName(item));
           return;
         }
         encryptDownloadAllBtn.disabled = true;
         encryptDownloadAllBtn.textContent = '⏳ 打包中...';
         try {
           const zip = new JSZip();
-          for (const item of doneItems) zip.file(item.processedName || item.file.name, item.processedBlob);
+          for (const item of doneItems) zip.file(encryptOutputName(item), item.processedBlob);
           const zipBlob = await zip.generateAsync({ type: 'blob' });
           const url = URL.createObjectURL(zipBlob);
           const a = document.createElement('a');
@@ -5096,6 +5346,14 @@
         const rongcaiFileInput = document.getElementById('rongcaiFileInput');
         const rongcaiProcBtn = document.getElementById('rongcaiProcBtn');
         const rongcaiDlBtn = document.getElementById('rongcaiDlBtn');
+        const rongcaiZipExport = document.getElementById('rongcaiZipExport');
+        const rongcaiContinueAdd = document.getElementById('rongcaiContinueAdd');
+        const rongcaiClearBtn = document.getElementById('rongcaiClearBtn');
+        function rongcaiOutputName(i) {
+          const name = rongcaiOutputNames[i] || ('result_' + i);
+          if (rongcaiZipExport && rongcaiZipExport.checked) return name.replace(/\.(bds|bdi|zip)$/i, '') + '.zip';
+          return name;
+        }
         const rongcaiLog = document.getElementById('rongcaiLog');
         const rongcaiStatusBadge = document.getElementById('rongcaiStatusBadge');
         const rongcaiStatusList = document.getElementById('rongcaiStatusList');
@@ -5128,6 +5386,14 @@
           rongcaiSetStatus('等待文件');
           rongcaiStatusList.innerHTML = '';
         }
+        rongcaiClearBtn.addEventListener('click', () => {
+          rongcaiSourceFiles = [];
+          rongcaiSourceZips = [];
+          rongcaiResetUI();
+          rongcaiLog.innerText = '';
+          rongcaiClearBtn.disabled = true;
+          rongcaiLogMsg('🗑️ 已清空全部文件，可重新导入');
+        });
 
         window.setMode = function(mode) {
           rongcaiCurrentMode = mode;
@@ -5163,13 +5429,23 @@
         };
 
         async function rongcaiLoadFiles(files) {
-          rongcaiLog.innerText = '';
-          rongcaiSourceFiles = files;
-          rongcaiResetUI();
-          rongcaiLogMsg(`📂 接收批量文件：${files.length} 个`);
-          rongcaiSourceZips = [];
-          for (let i = 0; i < files.length; i++) {
-            const file = files[i];
+          const appendMode = rongcaiContinueAdd.checked && rongcaiSourceFiles.length > 0;
+          if (!appendMode) {
+            rongcaiLog.innerText = '';
+            rongcaiResetUI();
+            rongcaiSourceZips = [];
+          }
+          const newFiles = [];
+          for (const f of files) {
+            const dup = rongcaiSourceFiles.some(x => x.name === f.name && x.size === f.size);
+            if (dup) { rongcaiLogMsg(`⚠️ 跳过重复文件：${f.name}`); continue; }
+            newFiles.push(f);
+          }
+          if (newFiles.length === 0) { rongcaiLogMsg('没有新增文件'); return; }
+          rongcaiSourceFiles = appendMode ? rongcaiSourceFiles.concat(newFiles) : newFiles;
+          rongcaiLogMsg(`📂 ${appendMode ? '继续添加' : '接收批量文件'}：${newFiles.length} 个（共 ${rongcaiSourceFiles.length} 个）`);
+          for (let i = 0; i < newFiles.length; i++) {
+            const file = newFiles[i];
             const name = file.name.toLowerCase();
             if (!name.endsWith('.bdi') && !name.endsWith('.bds') && !name.endsWith('.zip')) {
               rongcaiLogMsg(`❌ 跳过不支持文件：${file.name}`);
@@ -5187,6 +5463,7 @@
           }
           if (rongcaiSourceZips.length > 0) {
             rongcaiProcBtn.disabled = false;
+            rongcaiClearBtn.disabled = false;
             rongcaiSetStatus(`已加载 ${rongcaiSourceZips.length} 个，可处理`, true);
           }
         }
@@ -5388,7 +5665,7 @@
             rongcaiDlBtn.disabled = false;
             rongcaiLogMsg('📦 全部打包完成，可下载');
             rongcaiSetStatus(`处理完成：成功 ${rongcaiOutputZips.length} 个 ✅`, true);
-            const outFiles = rongcaiOutputZips.map((blob, i) => new File([blob], rongcaiOutputNames[i]));
+            const outFiles = rongcaiOutputZips.map((blob, i) => new File([blob], rongcaiOutputName(i)));
             setSharedFiles(outFiles, '融彩转换');
             rongcaiLogMsg('📥 处理结果已暂存到“继续编辑”池，可继续其他操作');
           } else {
@@ -5406,16 +5683,16 @@
           if (rongcaiOutputZips.length === 1) {
             const a = document.createElement('a');
             a.href = URL.createObjectURL(rongcaiOutputZips[0]);
-            a.download = rongcaiOutputNames[0];
+            a.download = rongcaiOutputName(0);
             document.body.appendChild(a);
             a.click();
             a.remove();
             setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-            rongcaiLogMsg(`⬇️ 已直接下载: ${rongcaiOutputNames[0]}`);
+            rongcaiLogMsg(`⬇️ 已直接下载: ${rongcaiOutputName(0)}`);
           } else if (rongcaiOutputZips.length > 1) {
             const zip = new JSZip();
             for (let i = 0; i < rongcaiOutputZips.length; i++) {
-              zip.file(rongcaiOutputNames[i], rongcaiOutputZips[i]);
+              zip.file(rongcaiOutputName(i), rongcaiOutputZips[i]);
             }
             zip.generateAsync({ type: "blob" }).then(function(content) {
               const a = document.createElement('a');
