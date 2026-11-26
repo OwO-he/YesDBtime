@@ -438,6 +438,9 @@
     .toast.hide { animation: toastOut 0.6s ease forwards; }
     @keyframes toastIn { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes toastOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-12px); } }
+    .color-range { -webkit-appearance: none; appearance: none; flex: 1; height: 14px; border-radius: 7px; outline: none; border: 1px solid rgba(0,0,0,0.1); }
+    .color-range::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: #d9d9d9; border: 2px solid #4d4d4d; cursor: pointer; }
+    .color-num { width: 58px; padding: 3px 6px; border: 1px solid rgba(0,0,0,0.15); border-radius: 7px; font-size: 13px; background: var(--bg-card); color: var(--text-main); }
   </style>
 </head><body>
   <div class="toast-container" id="toastContainer"></div>
@@ -627,6 +630,59 @@
             <button class="find-btn replace-all-btn" id="editorReplaceAllBtn" disabled>全部替换</button>
           </div>
         </div>
+        <div class="editor-color-bar" style="margin-top:8px;background:var(--bg-subtle);border:1px solid rgba(0,0,0,0.06);border-radius:10px;overflow:hidden;">
+          <div id="colorBarToggle" style="display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;user-select:none;">
+            <span style="font-size:13px;font-weight:600;color:var(--text-main);">🎨 颜色盘</span>
+            <span id="colorCurrentBox" style="display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border:1px solid rgba(0,0,0,0.12);border-radius:8px;background:var(--bg-card);cursor:pointer;font-size:12px;font-family:monospace;" title="点击复制色值">
+              <span id="colorCurrentChip" style="display:inline-block;width:16px;height:16px;border-radius:4px;border:1px solid rgba(0,0,0,0.15);background:#ffffff;"></span><span id="colorCurrentHex">FFFFFF</span>
+            </span>
+            <span id="colorBarArrow" style="margin-left:auto;font-size:12px;color:var(--text-light);">▸ 点击展开</span>
+          </div>
+          <div id="colorBarBody" style="display:none;padding:0 12px 10px;">
+            <div style="display:flex;margin:8px 0 10px;background:rgba(0,0,0,0.08);border-radius:10px;padding:3px;">
+              <button id="colorTabGrid" style="flex:1;padding:6px 0;border:none;border-radius:8px;background:var(--bg-card);font-size:13px;font-weight:600;color:var(--text-main);cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.1);">网格</button>
+              <button id="colorTabSpectrum" style="flex:1;padding:6px 0;border:none;border-radius:8px;background:transparent;font-size:13px;color:var(--text-secondary);cursor:pointer;">光谱</button>
+              <button id="colorTabSlider" style="flex:1;padding:6px 0;border:none;border-radius:8px;background:transparent;font-size:13px;color:var(--text-secondary);cursor:pointer;">滑块</button>
+            </div>
+            <div id="colorPaneGrid"></div>
+            <div id="colorPaneSpectrum" style="display:none;">
+              <div style="position:relative;max-width:100%;">
+                <canvas id="colorSpectrumCanvas" style="width:100%;height:180px;border-radius:10px;display:block;touch-action:none;cursor:crosshair;"></canvas>
+                <div id="colorSpectrumKnob" style="display:none;position:absolute;width:22px;height:22px;border-radius:50%;border:3px solid #FFFFFF;box-shadow:0 0 0 1px rgba(0,0,0,0.35),0 2px 6px rgba(0,0,0,0.35);transform:translate(-50%,-50%);pointer-events:none;"></div>
+              </div>
+            </div>
+            <div id="colorPaneSlider" style="display:none;">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                <span style="font-size:12px;color:var(--text-secondary);width:32px;flex-shrink:0;">红色</span>
+                <input type="range" id="colorSliderR" class="color-range" min="0" max="255" value="255">
+                <input type="number" id="colorNumR" class="color-num" min="0" max="255" value="255">
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                <span style="font-size:12px;color:var(--text-secondary);width:32px;flex-shrink:0;">绿色</span>
+                <input type="range" id="colorSliderG" class="color-range" min="0" max="255" value="255">
+                <input type="number" id="colorNumG" class="color-num" min="0" max="255" value="255">
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="font-size:12px;color:var(--text-secondary);width:32px;flex-shrink:0;">蓝色</span>
+                <input type="range" id="colorSliderB" class="color-range" min="0" max="255" value="255">
+                <input type="number" id="colorNumB" class="color-num" min="0" max="255" value="255">
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:10px;">
+              <button class="find-btn" id="colorCopyBtn">📋 复制色值</button>
+              <button class="find-btn" id="colorPickImgBtn">🖼️ 导入图片吸色</button>
+              <input type="file" id="colorImgInput" accept="image/*" style="display:none;">
+            </div>
+            <div id="colorImgArea" style="display:none;margin-top:8px;text-align:center;">
+              <div id="colorImgWrap" style="position:relative;display:inline-block;max-width:100%;">
+                <canvas id="colorImgCanvas" style="max-width:100%;max-height:260px;border:1px solid rgba(0,0,0,0.1);border-radius:8px;cursor:crosshair;display:block;touch-action:none;"></canvas>
+                <div id="colorPickRing" style="display:none;position:absolute;width:30px;height:30px;border-radius:50%;border:3px solid #FFFFFF;box-shadow:0 0 0 1px rgba(0,0,0,0.35),0 2px 6px rgba(0,0,0,0.35);transform:translate(-50%,-50%);pointer-events:none;"></div>
+                <div id="colorPickRingLabel" style="display:none;position:absolute;transform:translateX(-50%);padding:1px 7px;border-radius:7px;background:rgba(0,0,0,0.65);color:#FFFFFF;font-size:11px;font-family:monospace;pointer-events:none;white-space:nowrap;"></div>
+              </div>
+              <div style="font-size:11px;color:var(--text-light);margin-top:4px;">点击或按住拖动吸色，圆环跟随手指移动，选好后点「📋 复制色值」复制</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="extract-result" id="extractResult" style="display:none;">
@@ -764,6 +820,7 @@
           <li>加密/解密、融彩转换支持勾选按 zip 格式输出</li>
           <li>皮肤工具、融彩转换支持勾选「继续添加」批量追加皮肤包</li>
           <li>「继续添加」改为默认勾选，皮肤工具、融彩转换新增「🗑️ 清空」按钮</li>
+          <li>文本编辑器新增颜色盘：网格 / 光谱 / 滑块三种取色方式、图片吸色（圆环跟手拖动），点「复制色值」才复制，色值不带 #，支持折叠收纳</li>
         </ul>
       </div>
     </details>
@@ -1917,6 +1974,305 @@
         renderHighlight();
         syncScroll();
       });
+
+      /* ===== 颜色盘：网格 / 光谱 / 滑块 / 图片吸色 / 一键复制 ===== */
+      const colorCurrentBox = document.getElementById('colorCurrentBox');
+      const colorCurrentChip = document.getElementById('colorCurrentChip');
+      const colorCurrentHex = document.getElementById('colorCurrentHex');
+      const colorCopyBtn = document.getElementById('colorCopyBtn');
+      const colorPickImgBtn = document.getElementById('colorPickImgBtn');
+      const colorImgInput = document.getElementById('colorImgInput');
+      const colorImgArea = document.getElementById('colorImgArea');
+      const colorImgWrap = document.getElementById('colorImgWrap');
+      const colorImgCanvas = document.getElementById('colorImgCanvas');
+      const colorPickRing = document.getElementById('colorPickRing');
+      const colorPickRingLabel = document.getElementById('colorPickRingLabel');
+      const colorBarToggle = document.getElementById('colorBarToggle');
+      const colorBarBody = document.getElementById('colorBarBody');
+      const colorBarArrow = document.getElementById('colorBarArrow');
+      const colorTabGrid = document.getElementById('colorTabGrid');
+      const colorTabSpectrum = document.getElementById('colorTabSpectrum');
+      const colorTabSlider = document.getElementById('colorTabSlider');
+      const colorPaneGrid = document.getElementById('colorPaneGrid');
+      const colorPaneSpectrum = document.getElementById('colorPaneSpectrum');
+      const colorPaneSlider = document.getElementById('colorPaneSlider');
+      const colorSpectrumCanvas = document.getElementById('colorSpectrumCanvas');
+      const colorSpectrumKnob = document.getElementById('colorSpectrumKnob');
+      const colorSliderR = document.getElementById('colorSliderR');
+      const colorSliderG = document.getElementById('colorSliderG');
+      const colorSliderB = document.getElementById('colorSliderB');
+      const colorNumR = document.getElementById('colorNumR');
+      const colorNumG = document.getElementById('colorNumG');
+      const colorNumB = document.getElementById('colorNumB');
+      let colorCurrent = '#FFFFFF';
+
+      function hexToRgb(hex) {
+        const h = hex.replace('#', '');
+        return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+      }
+      function rgbToHex(r, g, b) {
+        return '#' + [r, g, b].map(v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('').toUpperCase();
+      }
+      function rgbToHsv(r, g, b) {
+        r /= 255; g /= 255; b /= 255;
+        const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+        let h = 0;
+        if (d) {
+          if (max === r) h = ((g - b) / d) % 6;
+          else if (max === g) h = (b - r) / d + 2;
+          else h = (r - g) / d + 4;
+          h *= 60; if (h < 0) h += 360;
+        }
+        return [h, max ? d / max : 0, max];
+      }
+      function hsvToRgb(h, s, v) {
+        const c = v * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = v - c;
+        let r, g, b;
+        if (h < 60) [r, g, b] = [c, x, 0];
+        else if (h < 120) [r, g, b] = [x, c, 0];
+        else if (h < 180) [r, g, b] = [0, c, x];
+        else if (h < 240) [r, g, b] = [0, x, c];
+        else if (h < 300) [r, g, b] = [x, 0, c];
+        else [r, g, b] = [c, 0, x];
+        return [(r + m) * 255, (g + m) * 255, (b + m) * 255];
+      }
+      function hslToHex(h, s, l) {
+        s /= 100; l /= 100;
+        const c = (1 - Math.abs(2 * l - 1)) * s;
+        const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+        const m = l - c / 2;
+        let r, g, b;
+        if (h < 60) [r, g, b] = [c, x, 0];
+        else if (h < 120) [r, g, b] = [x, c, 0];
+        else if (h < 180) [r, g, b] = [0, c, x];
+        else if (h < 240) [r, g, b] = [0, x, c];
+        else if (h < 300) [r, g, b] = [x, 0, c];
+        else [r, g, b] = [c, 0, x];
+        return rgbToHex((r + m) * 255, (g + m) * 255, (b + m) * 255);
+      }
+
+      function copyColorValue() {
+        const v = colorCurrent.replace('#', '');
+        const done = () => showToast('📋 已复制 ' + v);
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(v).then(done).catch(() => fallbackCopyColor(v, done));
+        } else {
+          fallbackCopyColor(v, done);
+        }
+      }
+      function fallbackCopyColor(text, done) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); done(); } catch (e) {}
+        document.body.removeChild(ta);
+      }
+      function setColorCurrent(hex, copy) {
+        colorCurrent = hex.toUpperCase();
+        colorCurrentChip.style.background = colorCurrent;
+        colorCurrentHex.textContent = colorCurrent.replace('#', '');
+        updatePickerUI();
+        if (copy) copyColorValue();
+      }
+      /* 折叠 / 展开 */
+      colorBarToggle.addEventListener('click', () => {
+        const show = colorBarBody.style.display === 'none';
+        colorBarBody.style.display = show ? 'block' : 'none';
+        colorBarArrow.textContent = show ? '▾ 点击收起' : '▸ 点击展开';
+        if (show) { renderSpectrum(); positionSpectrumKnob(); }
+      });
+      colorCurrentBox.addEventListener('click', (e) => { e.stopPropagation(); copyColorValue(); });
+      colorCopyBtn.addEventListener('click', copyColorValue);
+      colorPickImgBtn.addEventListener('click', () => colorImgInput.click());
+
+      /* ===== 网格页签 ===== */
+      function buildColorGrid() {
+        colorPaneGrid.innerHTML = '';
+        const mkRow = () => {
+          const d = document.createElement('div');
+          d.style.cssText = 'display:flex;gap:2px;margin-bottom:2px;';
+          return d;
+        };
+        const mkCell = (hex) => {
+          const s = document.createElement('span');
+          s.style.cssText = 'flex:1;aspect-ratio:1/1;min-width:0;border-radius:4px;border:1px solid rgba(0,0,0,0.08);cursor:pointer;background:' + hex;
+          s.title = hex.replace('#', '') + '（点击选择）';
+          s.addEventListener('click', () => setColorCurrent(hex, false));
+          return s;
+        };
+        let row = mkRow();
+        for (let i = 0; i < 12; i++) {
+          const v = Math.round(255 - i * (255 / 11));
+          row.appendChild(mkCell(rgbToHex(v, v, v)));
+        }
+        colorPaneGrid.appendChild(row);
+        for (let r = 0; r < 9; r++) {
+          row = mkRow();
+          for (let c = 0; c < 12; c++) {
+            row.appendChild(mkCell(hslToHex(c * 30, 100, 50 + r * 4.5)));
+          }
+          colorPaneGrid.appendChild(row);
+        }
+      }
+      buildColorGrid();
+
+      /* ===== 光谱页签 ===== */
+      let spectrumRendered = false;
+      function renderSpectrum() {
+        if (spectrumRendered) return;
+        const ctx = colorSpectrumCanvas.getContext('2d');
+        if (!ctx) return;
+        const w = colorSpectrumCanvas.width = 360;
+        const h = colorSpectrumCanvas.height = 200;
+        const img = ctx.createImageData(w, h);
+        for (let y = 0; y < h; y++) {
+          const yn = y / (h - 1);
+          const s = Math.min(1, yn * 2);
+          const v = 1 - Math.max(0, (yn - 0.5) * 2);
+          for (let x = 0; x < w; x++) {
+            const [r, g, b] = hsvToRgb(x / (w - 1) * 359.999, s, v);
+            const idx = (y * w + x) * 4;
+            img.data[idx] = r; img.data[idx + 1] = g; img.data[idx + 2] = b; img.data[idx + 3] = 255;
+          }
+        }
+        ctx.putImageData(img, 0, 0);
+        spectrumRendered = true;
+      }
+      function positionSpectrumKnob() {
+        const [r, g, b] = hexToRgb(colorCurrent);
+        const [h, s, v] = rgbToHsv(r, g, b);
+        const yn = (v >= 1) ? (s / 2) : 0.5 + (1 - v) / 2;
+        colorSpectrumKnob.style.left = (h / 360 * 100) + '%';
+        colorSpectrumKnob.style.top = (yn * 100) + '%';
+      }
+      let spectrumPicking = false;
+      function spectrumPick(e, copy) {
+        const rect = colorSpectrumCanvas.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        const xn = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
+        const yn = Math.min(Math.max((e.clientY - rect.top) / rect.height, 0), 1);
+        setColorCurrent(rgbToHex(...hsvToRgb(xn * 359.999, Math.min(1, yn * 2), 1 - Math.max(0, (yn - 0.5) * 2))), copy);
+        colorSpectrumKnob.style.left = (xn * 100) + '%';
+        colorSpectrumKnob.style.top = (yn * 100) + '%';
+        colorSpectrumKnob.style.display = 'block';
+      }
+      colorSpectrumCanvas.addEventListener('pointerdown', (e) => {
+        spectrumPicking = true;
+        try { colorSpectrumCanvas.setPointerCapture(e.pointerId); } catch (err) {}
+        spectrumPick(e, false);
+      });
+      colorSpectrumCanvas.addEventListener('pointermove', (e) => { if (spectrumPicking) spectrumPick(e, false); });
+      colorSpectrumCanvas.addEventListener('pointerup', (e) => {
+        if (!spectrumPicking) return;
+        spectrumPicking = false;
+        spectrumPick(e, false);
+        showToast('🎨 已选中 ' + colorCurrent.replace('#', '') + '，点「复制色值」复制');
+      });
+      colorSpectrumCanvas.addEventListener('pointercancel', () => { spectrumPicking = false; });
+
+      /* ===== 滑块页签 ===== */
+      function updateSliderGradients() {
+        const [r, g, b] = hexToRgb(colorCurrent);
+        colorSliderR.style.background = 'linear-gradient(to right, ' + rgbToHex(0, g, b) + ', ' + rgbToHex(255, g, b) + ')';
+        colorSliderG.style.background = 'linear-gradient(to right, ' + rgbToHex(r, 0, b) + ', ' + rgbToHex(r, 255, b) + ')';
+        colorSliderB.style.background = 'linear-gradient(to right, ' + rgbToHex(r, g, 0) + ', ' + rgbToHex(r, g, 255) + ')';
+      }
+      function onSliderInput() {
+        setColorCurrent(rgbToHex(+colorSliderR.value, +colorSliderG.value, +colorSliderB.value), false);
+      }
+      [colorSliderR, colorSliderG, colorSliderB, colorNumR, colorNumG, colorNumB].forEach(el => el.addEventListener('input', onSliderInput));
+
+      /* ===== 页签切换 ===== */
+      function switchColorTab(tab) {
+        const map = { grid: colorTabGrid, spectrum: colorTabSpectrum, slider: colorTabSlider };
+        for (const k in map) {
+          const btn = map[k], on = k === tab;
+          btn.style.background = on ? 'var(--bg-card)' : 'transparent';
+          btn.style.fontWeight = on ? '600' : '400';
+          btn.style.color = on ? 'var(--text-main)' : 'var(--text-secondary)';
+          btn.style.boxShadow = on ? '0 1px 3px rgba(0,0,0,0.1)' : 'none';
+        }
+        colorPaneGrid.style.display = tab === 'grid' ? 'block' : 'none';
+        colorPaneSpectrum.style.display = tab === 'spectrum' ? 'block' : 'none';
+        colorPaneSlider.style.display = tab === 'slider' ? 'block' : 'none';
+        if (tab === 'spectrum') { renderSpectrum(); positionSpectrumKnob(); colorSpectrumKnob.style.display = 'block'; }
+        else colorSpectrumKnob.style.display = 'none';
+        if (tab === 'slider') updateSliderGradients();
+      }
+      colorTabGrid.addEventListener('click', () => switchColorTab('grid'));
+      colorTabSpectrum.addEventListener('click', () => switchColorTab('spectrum'));
+      colorTabSlider.addEventListener('click', () => switchColorTab('slider'));
+
+      /* ===== 颜色变化时同步各页签 ===== */
+      function updatePickerUI() {
+        const [r, g, b] = hexToRgb(colorCurrent);
+        colorSliderR.value = r; colorSliderG.value = g; colorSliderB.value = b;
+        colorNumR.value = r; colorNumG.value = g; colorNumB.value = b;
+        updateSliderGradients();
+        if (colorPaneSpectrum.style.display !== 'none') positionSpectrumKnob();
+      }
+      updatePickerUI();
+      colorImgInput.addEventListener('change', () => {
+        const f = colorImgInput.files[0];
+        colorImgInput.value = '';
+        if (!f) return;
+        const img = new Image();
+        img.onload = () => {
+          colorImgCanvas.width = img.naturalWidth;
+          colorImgCanvas.height = img.naturalHeight;
+          colorImgCanvas.getContext('2d').drawImage(img, 0, 0);
+          colorImgArea.style.display = 'block';
+          colorPickRing.style.display = 'none';
+          colorPickRingLabel.style.display = 'none';
+        };
+        img.onerror = () => showToast('❌ 图片加载失败');
+        img.src = URL.createObjectURL(f);
+      });
+      /* 吸色：点击或按住拖动，圆环跟随，松手复制 */
+      let colorPicking = false;
+      function pickAtPoint(e, copy) {
+        const rect = colorImgCanvas.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return;
+        const dispX = Math.min(Math.max(e.clientX - rect.left, 0), rect.width);
+        const dispY = Math.min(Math.max(e.clientY - rect.top, 0), rect.height);
+        const x = Math.min(Math.floor(dispX * (colorImgCanvas.width / rect.width)), colorImgCanvas.width - 1);
+        const y = Math.min(Math.floor(dispY * (colorImgCanvas.height / rect.height)), colorImgCanvas.height - 1);
+        try {
+          const d = colorImgCanvas.getContext('2d').getImageData(x, y, 1, 1).data;
+          const hex = '#' + [d[0], d[1], d[2]].map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
+          setColorCurrent(hex, copy);
+          /* 圆环标记吸色位置 */
+          colorPickRing.style.left = dispX + 'px';
+          colorPickRing.style.top = dispY + 'px';
+          colorPickRing.style.background = hex;
+          colorPickRing.style.display = 'block';
+          colorPickRingLabel.textContent = hex.replace('#', '');
+          colorPickRingLabel.style.left = dispX + 'px';
+          colorPickRingLabel.style.top = (dispY + 20) + 'px';
+          colorPickRingLabel.style.display = 'block';
+        } catch (err) {
+          showToast('❌ 取色失败');
+        }
+      }
+      colorImgCanvas.addEventListener('pointerdown', (e) => {
+        colorPicking = true;
+        try { colorImgCanvas.setPointerCapture(e.pointerId); } catch (err) {}
+        pickAtPoint(e, false);
+      });
+      colorImgCanvas.addEventListener('pointermove', (e) => {
+        if (!colorPicking) return;
+        pickAtPoint(e, false);
+      });
+      colorImgCanvas.addEventListener('pointerup', (e) => {
+        if (!colorPicking) return;
+        colorPicking = false;
+        pickAtPoint(e, false);
+        showToast('🎨 已选中 ' + colorCurrent.replace('#', '') + '，点「复制色值」复制');
+      });
+      colorImgCanvas.addEventListener('pointercancel', () => { colorPicking = false; });
 
       function buildSearchMatches() {
         const searchText = editorFindInput.value;
