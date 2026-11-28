@@ -618,7 +618,7 @@
       </div>
 
       <div class="action-row" id="audioReplaceNameRow" style="display:none;margin-top:6px;">
-        <input type="text" id="audioReplaceCustomName" placeholder="✏️ 自定义文件名（可选，不填则用原文件名，不用写后缀）" style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid var(--border);font-size:14px;background:var(--item-bg);color:var(--text-main);">
+        <input type="text" id="audioReplaceCustomName" placeholder="✏️ 自定义命名（可选，加在原文件名后面，不用写后缀）" style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid var(--border);font-size:14px;background:var(--item-bg);color:var(--text-main);">
       </div>
 
       <div class="action-row" style="margin-top: 8px;">
@@ -654,6 +654,8 @@
       <div style="padding:2px 16px 12px;font-size:0.76rem;color:var(--text-light);line-height:1.7;">
         <p style="margin:6px 0 2px;font-weight:600;color:var(--text-main);">v4.33 · 2026-11-28</p>
         <ul style="margin:2px 0 8px;padding-left:18px;">
+          <li>修复皮肤替换后产物无法使用的问题，改为重建打包</li>
+          <li>替换音效自定义命名改为加在原文件名后面，不再整体重命名</li>
           <li>已选多个文件可点「展开」逐个查看，取消勾选即从列表移除</li>
           <li>「📝 文本编辑」「🔏 字体打标」拆为独立页签，文件池依旧互通</li>
           <li>皮肤工具只保留一个通用「📦 下载为 zip」按钮</li>
@@ -4427,6 +4429,21 @@
         log('↩️ 已清除皮肤替换包');
       });
 
+      /* 重建压缩包：新建包按顺序复制全部条目，规范反斜杠/前导路径，去重，等效手动重新打包 */
+      async function rebuildZipNormalized(zip) {
+        const outZip = new JSZip();
+        const seen = new Set();
+        for (const p of Object.keys(zip.files)) {
+          const entry = zip.files[p];
+          const norm = String(p).replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '').replace(/\/+$/, '');
+          if (!norm || seen.has(norm)) continue;
+          seen.add(norm);
+          if (entry.dir) { outZip.folder(norm); continue; }
+          outZip.file(norm, await entry.async('blob'));
+        }
+        return outZip;
+      }
+
       /* 在目标皮肤包里按 日间(light)/夜间(dark) 分组替换图片；demo.png 替换根目录的 */
       async function replaceImagesInSkin(zip, packImages, logFunc) {
         const allKeys = Object.keys(zip.files).filter(k => !zip.files[k].dir);
@@ -4519,7 +4536,9 @@
               }
               const res = await replaceImagesInSkin(zip, skinReplaceImages, log);
               sanitizeZipEntries(zip, log);
-              const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
+              /* 重建压缩包：等效手动重新打包，规范路径与条目结构，避免原包特殊结构导致产物不可用 */
+              const outPack = await rebuildZipNormalized(zip);
+              const blob = await outPack.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
               if (targetFiles.length === 1) {
                 saveAs(blob, applyTimeStampToName(file.name));
                 setSharedFiles([new File([blob], file.name)], '皮肤替换');
@@ -4661,6 +4680,8 @@
         /* 自定义文件名（可选）：不写后缀，自动补上原文件的后缀 */
         const customNameRaw = (audioReplaceCustomName && audioReplaceCustomName.value ? audioReplaceCustomName.value : '').trim().replace(/[\\/:*?"<>|]/g, '');
         const extOf = (n) => { const m = String(n).match(/(\.[a-z0-9]+)$/i); return m ? m[1] : ''; };
+        /* 自定义命名基于原文件名：原名(无后缀) + 自定义文字 + 原后缀 */
+        const baseOf = (n) => String(n).replace(extOf(n), '');
 
         if (targetFiles.length === 1) {
           const file = targetFiles[0];
@@ -4671,7 +4692,7 @@
             const outZip = await replaceAudioInSkin(zip, audioReplaceFiles, file.name);
             removeGSCopyrightFromZip(outZip, log);
             let outBlob = await outZip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
-            let finalFile = new File([outBlob], customNameRaw ? (customNameRaw + extOf(file.name)) : file.name);
+            let finalFile = new File([outBlob], customNameRaw ? (baseOf(file.name) + customNameRaw + extOf(file.name)) : file.name);
             if (savedMarkContent) {
               const items = parseMarkInput(savedMarkContent);
               if (items.length > 0) {
@@ -4714,7 +4735,7 @@
                 finalFile = await markFileWithCamouflage(finalFile, items);
               }
             }
-            const timeStampedName = applyTimeStampToName(customNameRaw ? (customNameRaw + '_' + (idx + 1) + extOf(file.name)) : finalFile.name);
+            const timeStampedName = applyTimeStampToName(customNameRaw ? (baseOf(file.name) + customNameRaw + extOf(file.name)) : finalFile.name);
             resultZip.file(timeStampedName, finalFile);
             lastAudioReplaceOutputs.push({ name: timeStampedName, blob: new Blob([await finalFile.arrayBuffer()], { type: finalFile.type || 'application/zip' }) });
             log('✅ [' + (idx + 1) + '/' + targetFiles.length + '] 替换成功: ' + timeStampedName);
