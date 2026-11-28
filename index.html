@@ -56,9 +56,9 @@
       border-radius: 0 12px 12px 0; line-height: 1.6; transition: background 0.3s, color 0.3s; }
     .main-tabs { display: flex; gap: 6px; margin-bottom: 18px; background: var(--bg-tabs);
       border-radius: 60px; padding: 4px; flex-wrap: wrap; transition: background 0.3s; }
-    .main-tab { flex: 1; text-align: center; padding: 10px 0; border-radius: 40px;
+    .main-tab { flex: 0 1 auto; text-align: center; padding: 10px 16px; border-radius: 40px;
       font-weight: 600; font-size: 14px; color: var(--text-muted); cursor: pointer;
-      transition: 0.2s; border: none; background: transparent; min-width: 100px; }
+      transition: 0.2s; border: none; background: transparent; }
     .main-tab.active { background: var(--bg-tab-active); color: var(--text-primary); box-shadow: var(--shadow-tab); }
     .main-tab:hover:not(.active) { background: rgba(255, 255, 255, 0.1); }
     .section { display: none; animation: fadeIn 0.25s ease; }
@@ -66,9 +66,9 @@
     @keyframes fadeIn { from { opacity: 0.6; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
     .mode-tabs { display: flex; gap: 8px; margin-bottom: 16px; background: var(--bg-tabs);
       border-radius: 60px; padding: 4px; flex-wrap: wrap; transition: background 0.3s; }
-    .mode-tab { flex: 1; text-align: center; padding: 10px 0; border-radius: 40px;
+    .mode-tab { flex: 0 1 auto; text-align: center; padding: 10px 14px; border-radius: 40px;
       font-weight: 600; font-size: 14px; color: var(--text-muted); cursor: pointer;
-      transition: 0.2s; border: none; background: transparent; min-width: 90px; }
+      transition: 0.2s; border: none; background: transparent; }
     .mode-tab.active { background: var(--bg-tab-active); color: var(--text-primary); box-shadow: var(--shadow-tab); }
     .mode-tab:hover:not(.active) { background: rgba(255, 255, 255, 0.1); }
     .upload-area { background: var(--bg-upload); border: 2px dashed var(--border-dash);
@@ -286,7 +286,9 @@
     @media (max-width: 480px) {
       .card { padding: 16px; } .row-label { min-width: 60px; }
       .action-btn { min-width: 100px; font-size: 14px; padding: 10px 16px; }
-      .main-tab { min-width: 60px; font-size: 12px; padding: 8px 0; }
+      .main-tab { font-size: 12px; padding: 8px 10px; flex: 0 0 calc((100% - 12px) / 3); min-width: 0; white-space: nowrap; }
+      .main-tabs { justify-content: flex-start; }
+      #modeTabs .mode-tab { flex: 0 0 calc((100% - 16px) / 3); min-width: 0; white-space: nowrap; font-size: 12px; padding: 8px 4px; }
       .audio-direction { flex: 1 1 100%; margin-left: 0; }
       .audio-direction select { flex: 1 1 auto; }
     }
@@ -451,7 +453,9 @@
     <div class="main-tabs" id="mainTabs">
       <button class="main-tab active" data-section="skin">🎨 皮肤工具</button>
       <button class="main-tab" data-section="encrypt">🔐 加密/解密</button>
+      <button class="main-tab" data-section="editor">📝 文本编辑</button>
       <button class="main-tab" data-section="rongcai">🌈 融彩转换</button>
+      <button class="main-tab" data-section="mark">🔏 字体打标</button>
     </div>
 
     <div class="section active" id="sectionSkin">
@@ -470,6 +474,32 @@
         <button class="mode-tab" data-mode="skinReplace">🧩 皮肤替换包</button>
       </div>
 
+      <div id="markToolWrap">
+      <div class="mark-inline-row">
+        <label>🔒 隐形标记 <span style="font-weight:400;color:var(--text-light);font-size:12px;">(微信号/QQ)</span></label>
+        <input type="text" id="markText" placeholder="填写标记内容，不填则不打标" maxlength="120">
+        <button class="mark-inline-btn mark-write" id="btnMark" disabled>✍️ 写入标记</button>
+        <button class="mark-inline-btn mark-check" id="btnCheck">🔍 查验标记</button>
+        <button class="mark-inline-btn mark-download" id="btnDownloadMarked" disabled>📥 下载</button>
+        <button class="mark-inline-btn mark-download" id="btnDownloadMarkedZip" disabled>📦 下载为 zip</button>
+        <span class="mark-status" id="markStatus">⏳ 等待文件</span>
+        <label style="display:flex;align-items:center;gap:6px;margin-left:auto;font-weight:500;color:var(--text-secondary);font-size:14px;cursor:pointer;">
+          <input type="checkbox" id="optTimeStamp" style="width:16px;height:16px;accent-color:var(--color-accent);cursor:pointer;">
+          ⏱️ 时间输出
+        </label>
+      </div>
+      <div class="mark-result-inline" id="checkResult">
+        <strong>📋 查验结果：</strong>
+        <span id="resultContent"></span>
+      </div>
+      <p style="margin:10px 4px 0;font-size:12px;color:var(--text-light);">💡 文件池与皮肤工具互通：先在「🎨 皮肤工具」上传皮肤包，再回到这里打标或查验。</p>
+      </div>
+
+      <label style="display:flex;align-items:center;gap:6px;margin:6px 0 2px;font-weight:500;color:var(--text-secondary);font-size:14px;cursor:pointer;">
+        <input type="checkbox" id="continueAddFiles" checked> ➕ 继续添加
+      </label>
+      <button class="action-btn secondary" id="clearFilesBtn" style="margin:0 0 6px;" disabled>🗑️ 清空文件</button>
+
       <!-- 区域一：皮肤包导入区，无论是哪个模式永远显示 -->
       <div class="upload-area" id="dropZone">
         <div class="upload-icon" id="uploadIcon">📂</div>
@@ -477,15 +507,15 @@
         <div class="upload-hint" id="uploadHint">支持 .bds / .bdi / .zip</div>
         <input type="file" id="fileInput" multiple style="display:none;">
       </div>
-      <label style="display:flex;align-items:center;gap:6px;margin:6px 0 0;font-weight:500;color:var(--text-secondary);font-size:14px;cursor:pointer;">
-        <input type="checkbox" id="continueAddFiles" checked> ➕ 继续添加（新文件追加到已选列表，不覆盖）
-      </label>
-      <button class="action-btn secondary" id="clearFilesBtn" style="margin:6px 0 0;" disabled>🗑️ 清空文件</button>
 
-      <div id="fileStatus" class="file-status" style="display: none;">
-        <span class="file-name" id="fileName">未命名</span>
-        <span class="badge" id="fileSize">0 KB</span>
-        <span class="direction-badge" id="directionBadge">→ 安卓</span>
+      <div id="fileStatus" class="file-status" style="display: none;flex-direction:column;align-items:stretch;gap:0;">
+        <div id="fileStatusHeader" style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <span class="file-name" id="fileName">未命名</span>
+          <span class="badge" id="fileSize">0 KB</span>
+          <span class="direction-badge" id="directionBadge">→ 安卓</span>
+          <span id="fileListToggle" style="margin-left:auto;font-size:12px;color:var(--text-secondary);flex-shrink:0;">▾ 展开</span>
+        </div>
+        <div id="fileListPanel" style="display:none;width:100%;"></div>
       </div>
 
       <div class="action-row" style="margin-top: 4px;">
@@ -567,26 +597,7 @@
         </div>
       </div>
 
-      <div class="mark-inline-row">
-        <label>🔒 隐形标记 <span style="font-weight:400;color:var(--text-light);font-size:12px;">(微信号/QQ)</span></label>
-        <input type="text" id="markText" placeholder="填写标记内容，不填则不打标" maxlength="120">
-        <button class="mark-inline-btn mark-write" id="btnMark" disabled>✍️ 写入标记</button>
-        <button class="mark-inline-btn mark-check" id="btnCheck">🔍 查验标记</button>
-        <button class="mark-inline-btn mark-download" id="btnDownloadMarked" disabled>📥 下载</button>
-        <button class="mark-inline-btn mark-download" id="btnDownloadMarkedZip" disabled>📦 下载为 zip</button>
-        <span class="mark-status" id="markStatus">⏳ 等待文件</span>
-        <label style="display:flex;align-items:center;gap:6px;margin-left:auto;font-weight:500;color:var(--text-secondary);font-size:14px;cursor:pointer;">
-          <input type="checkbox" id="optTimeStamp" style="width:16px;height:16px;accent-color:var(--color-accent);cursor:pointer;">
-          ⏱️ 时间输出
-        </label>
-      </div>
-      <div class="mark-result-inline" id="checkResult">
-        <strong>📋 查验结果：</strong>
-        <span id="resultContent"></span>
-      </div>
-
       <div class="operation-options" id="operationOptions">
-        <label><input type="checkbox" id="optMark"> 🔏 打标（溯源标记）</label>
         <label><input type="checkbox" id="optReplaceDemo"> 🖼️ 替换 demo.png</label>
         <label><input type="checkbox" id="optConvert"> ⚡ 转换格式（安卓↔iOS）</label>
         <label><input type="checkbox" id="optCompress"> 🗜️ 压缩图片</label>
@@ -601,9 +612,7 @@
       <div class="mini-row">
         <button class="action-btn secondary" id="replaceDemoOnlyBtn" disabled>🖼️ 仅替换demo.png</button>
         <button class="action-btn secondary" id="downloadCompressedBtn" disabled>💾 下载压缩后文件</button>
-        <button class="action-btn secondary" id="downloadCompressedZipBtn" disabled>📦 下载为 zip</button>
         <button class="action-btn replace-audio" id="replaceAudioBtn" disabled>🔊 替换音效并下载</button>
-        <button class="action-btn secondary" id="replaceAudioZipBtn" disabled>📦 下载为 zip</button>
         <button class="action-btn genaudio" id="genAudioBtn" style="display:none;" disabled>🎼 生成aj音效并下载</button>
         <button class="action-btn replace-audio" id="skinReplaceBtn" style="display:none;" disabled>🧩 替换图片并下载</button>
       </div>
@@ -617,7 +626,7 @@
       </div>
 
       <div class="action-row" style="margin-top: 8px;">
-        <button class="action-btn" id="exportZipBtn" style="background: linear-gradient(135deg, #34c77b, #1fa864);" disabled>📦 导出为 zip 格式</button>
+        <button class="action-btn" id="universalZipBtn" style="background: linear-gradient(135deg, #34c77b, #1fa864);" disabled>📦 下载为 zip</button>
       </div>
 
       <div class="audio-row" id="audioRow">
@@ -635,6 +644,68 @@
         </div>
       </div>
 
+
+      <div class="extract-result" id="extractResult" style="display:none;">
+        <strong>📋 秘标查验结果</strong>
+        <pre id="extractContent" style="margin-top:6px;font-size:13px;white-space:pre-wrap;word-break:break-all;"></pre>
+      </div>
+    <details style="margin:14px 0 4px;padding:0;background:var(--bg-subtle);border-radius:14px;border:1px solid rgba(0,0,0,0.06);overflow:hidden;">
+      <summary style="padding:10px 16px;font-size:0.82rem;font-weight:600;color:var(--text-main);cursor:pointer;user-select:none;list-style-position:inside;">📜 更新日志</summary>
+      <div style="padding:2px 16px 12px;font-size:0.76rem;color:var(--text-light);line-height:1.7;">
+        <p style="margin:6px 0 2px;font-weight:600;color:var(--text-main);">v4.33 · 2026-11-28</p>
+        <ul style="margin:2px 0 8px;padding-left:18px;">
+          <li>已选多个文件可点「展开」逐个查看，取消勾选即从列表移除</li>
+          <li>「📝 文本编辑」「🔏 字体打标」拆为独立页签，文件池依旧互通</li>
+          <li>皮肤工具只保留一个通用「📦 下载为 zip」按钮</li>
+          <li>新增「🧩 皮肤替换包」模式：缩略图预览、删除图片（日/夜同步）</li>
+          <li>修复皮肤替换包缩略图不显示、点删除白屏闪烁的问题</li>
+          <li>替换音效支持自定义输出文件名；「提取所有音效」改从音效包提取</li>
+        </ul>
+<p style="margin:10px 0 2px;font-weight:600;color:var(--text-main);">v4.32 · 2026-11-25</p>
+        <p style="margin:6px 0 2px;font-weight:600;color:var(--text-main);">🧹 清理与导出</p>
+        <ul style="margin:2px 0 8px;padding-left:18px;">
+          <li>所有功能产出的包统一删除 GSCopyright.json</li>
+          <li>日间/夜间子文件夹内不再保留 demo.png</li>
+          <li>自动清除 __MACOSX / .DS_Store 苹果系统残留文件</li>
+          <li>新增独立「📦 导出为 zip 格式」按钮</li>
+          <li>压缩包内文件时间修正为导出时刻的本地时间</li>
+          <li>加密/解密、融彩转换支持勾选按 zip 格式输出</li>
+          <li>皮肤工具、融彩转换支持勾选「继续添加」批量追加皮肤包</li>
+          <li>「继续添加」改为默认勾选，皮肤工具、融彩转换新增「🗑️ 清空」按钮</li>
+          <li>文本编辑器新增颜色盘：网格 / 光谱 / 滑块三种取色方式、图片吸色（圆环跟手拖动），点「复制色值」才复制，色值不带 #，支持折叠收纳</li>
+        </ul>
+<p style="margin:10px 0 2px;font-weight:600;color:var(--text-main);">v4.31 · 2026-11-21</p>
+        <p style="margin:6px 0 2px;font-weight:600;color:var(--text-main);">🎵 音效转换与补齐</p>
+        <ul style="margin:2px 0 8px;padding-left:18px;">
+          <li>新增双模式转换：⚡ 快速模式 / 🔬 完整转换</li>
+          <li>音效转换与补齐大幅提速</li>
+          <li>自动补齐缺失的 ogg / aiff 后缀</li>
+          <li>修复 ogg 变 0KB 打不开的问题</li>
+          <li>修复转换卡死不动的问题</li>
+          <li>转换方向选错时给出提示</li>
+        </ul>
+        <p style="margin:6px 0 2px;font-weight:600;color:var(--text-main);">🎼 生成aj音效</p>
+        <ul style="margin:2px 0 8px;padding-left:18px;">
+          <li>新增音效试听</li>
+          <li>新增命名交换调整</li>
+          <li>皮肤包导入后音效自动进试听列表</li>
+          <li>修复多音频命名互相覆盖的问题</li>
+        </ul>
+        <p style="margin:6px 0 2px;font-weight:600;color:var(--text-main);">🖥️ 界面</p>
+        <ul style="margin:2px 0 8px;padding-left:18px;">
+          <li>日志栏改为悬浮显示，可收起</li>
+          <li>修复工具栏超出手机屏幕的问题</li>
+        </ul>
+        <p style="margin:6px 0 2px;font-weight:600;color:var(--text-main);">🧹 其他</p>
+        <ul style="margin:2px 0 0;padding-left:18px;">
+          <li>所有功能产出的包统一删除 GSCopyright.json</li>
+        </ul>
+      </div>
+    </details>
+    </div>
+
+
+    <div class="section" id="sectionEditor">
       <div class="text-editor-panel" id="textEditorPanel">
         <div class="text-editor-title">📝 文本编辑器 (Info.txt / default.css)</div>
         <div class="text-editor-file-bar">
@@ -720,11 +791,36 @@
           </div>
         </div>
       </div>
+      <p style="margin:10px 4px 0;font-size:12px;color:var(--text-light);">💡 文件池与皮肤工具互通：先在「🎨 皮肤工具」上传皮肤包，再回到这里编辑包内文本。</p>
+    </div>
 
-      <div class="extract-result" id="extractResult" style="display:none;">
-        <strong>📋 秘标查验结果</strong>
-        <pre id="extractContent" style="margin-top:6px;font-size:13px;white-space:pre-wrap;word-break:break-all;"></pre>
+    <div class="section" id="sectionMark">
+    <div class="font-section">
+      <div class="font-section-title">🔤 字体溯源打标 (TTF/OTF)</div>
+      <div class="font-upload-area" id="fontDropZone">
+        <div class="upload-icon">📝</div>
+        <div class="upload-text">点击或拖拽上传字体文件</div>
+        <div class="upload-hint">支持 .ttf / .otf (可批量)</div>
+        <input type="file" id="fontFileInput" multiple accept=".ttf,.otf,.TTF,.OTF">
       </div>
+      <div id="fontFileStatus" class="font-file-status" style="display: none;">
+        <span class="font-file-name" id="fontFileName">未命名</span>
+        <span class="font-badge" id="fontFileSize">0 KB</span>
+      </div>
+      <div class="trace-row" style="margin-top: 8px;">
+        <label for="fontTraceInput">🔍 字体溯源标记 <span style="font-weight:400;color:var(--text-light);">(选填)</span></label>
+        <input type="text" id="fontTraceInput" placeholder="填写QQ/微信号，不填则不打标" maxlength="120">
+        <span class="trace-hint">填写后植入隐形标记</span>
+      </div>
+      <div class="action-row" style="margin-top: 8px;">
+        <button class="action-btn font" id="markFontBtn" disabled>🔏 字体打标并下载</button>
+        <button class="action-btn extract" id="extractFontTraceBtn">📋 读取字体秘标</button>
+      </div>
+      <div class="extract-result" id="fontExtractResult">
+        <strong>📋 字体秘标查验结果</strong>
+        <pre id="fontExtractContent" style="margin-top:6px;font-size:13px;white-space:pre-wrap;word-break:break-all;"></pre>
+      </div>
+    </div>
     </div>
 
     <div class="section" id="sectionEncrypt">
@@ -816,94 +912,7 @@
       <div class="log-box" id="rongcaiLog">📋 日志区域 · 拖入文件开始</div>
     </div>
 
-    <div class="font-section">
-      <div class="font-section-title">🔤 字体溯源打标 (TTF/OTF)</div>
-      <div class="font-upload-area" id="fontDropZone">
-        <div class="upload-icon">📝</div>
-        <div class="upload-text">点击或拖拽上传字体文件</div>
-        <div class="upload-hint">支持 .ttf / .otf (可批量)</div>
-        <input type="file" id="fontFileInput" multiple accept=".ttf,.otf,.TTF,.OTF">
-      </div>
-      <div id="fontFileStatus" class="font-file-status" style="display: none;">
-        <span class="font-file-name" id="fontFileName">未命名</span>
-        <span class="font-badge" id="fontFileSize">0 KB</span>
-      </div>
-      <div class="trace-row" style="margin-top: 8px;">
-        <label for="fontTraceInput">🔍 字体溯源标记 <span style="font-weight:400;color:var(--text-light);">(选填)</span></label>
-        <input type="text" id="fontTraceInput" placeholder="填写QQ/微信号，不填则不打标" maxlength="120">
-        <span class="trace-hint">填写后植入隐形标记</span>
-      </div>
-      <div class="action-row" style="margin-top: 8px;">
-        <button class="action-btn font" id="markFontBtn" disabled>🔏 字体打标并下载</button>
-        <button class="action-btn extract" id="extractFontTraceBtn">📋 读取字体秘标</button>
-      </div>
-      <div class="extract-result" id="fontExtractResult">
-        <strong>📋 字体秘标查验结果</strong>
-        <pre id="fontExtractContent" style="margin-top:6px;font-size:13px;white-space:pre-wrap;word-break:break-all;"></pre>
-      </div>
-    </div>
 
-    <details style="margin:14px 0 4px;padding:0;background:var(--bg-subtle);border-radius:14px;border:1px solid rgba(0,0,0,0.06);overflow:hidden;">
-      <summary style="padding:10px 16px;font-size:0.82rem;font-weight:600;color:var(--text-main);cursor:pointer;user-select:none;list-style-position:inside;">📜 更新日志（v4.34 · 2026-11-28）</summary>
-      <div style="padding:2px 16px 12px;font-size:0.76rem;color:var(--text-light);line-height:1.7;">
-        <ul style="margin:6px 0 2px;padding-left:18px;">
-          <li>新增「🧩 皮肤替换包」模式：导入含日间/夜间文件夹和根目录 demo.png 的替换包，一键替换皮肤包内对应图片</li>
-          <li>皮肤替换包模式支持缩略图预览（默认折叠，四张一排带文件名）和删除皮肤包内的图片文件，日间/夜间同名图片同步删除</li>
-          <li>修复缩略图不显示图片的问题</li>
-          <li>替换音效支持自定义输出文件名</li>
-          <li>替换音效模式下「提取所有音效」改为从音效包提取</li>
-        </ul>
-      </div>
-    </details>
-
-    <details style="margin:14px 0 4px;padding:0;background:var(--bg-subtle);border-radius:14px;border:1px solid rgba(0,0,0,0.06);overflow:hidden;">
-      <summary style="padding:10px 16px;font-size:0.82rem;font-weight:600;color:var(--text-main);cursor:pointer;user-select:none;list-style-position:inside;">📜 更新日志（v4.32 · 2026-11-25）</summary>
-      <div style="padding:2px 16px 12px;font-size:0.76rem;color:var(--text-light);line-height:1.7;">
-        <p style="margin:6px 0 2px;font-weight:600;color:var(--text-main);">🧹 清理与导出</p>
-        <ul style="margin:2px 0 8px;padding-left:18px;">
-          <li>所有功能产出的包统一删除 GSCopyright.json</li>
-          <li>日间/夜间子文件夹内不再保留 demo.png</li>
-          <li>自动清除 __MACOSX / .DS_Store 苹果系统残留文件</li>
-          <li>新增独立「📦 导出为 zip 格式」按钮</li>
-          <li>压缩包内文件时间修正为导出时刻的本地时间</li>
-          <li>加密/解密、融彩转换支持勾选按 zip 格式输出</li>
-          <li>皮肤工具、融彩转换支持勾选「继续添加」批量追加皮肤包</li>
-          <li>「继续添加」改为默认勾选，皮肤工具、融彩转换新增「🗑️ 清空」按钮</li>
-          <li>文本编辑器新增颜色盘：网格 / 光谱 / 滑块三种取色方式、图片吸色（圆环跟手拖动），点「复制色值」才复制，色值不带 #，支持折叠收纳</li>
-        </ul>
-      </div>
-    </details>
-
-    <details style="margin:14px 0 4px;padding:0;background:var(--bg-subtle);border-radius:14px;border:1px solid rgba(0,0,0,0.06);overflow:hidden;">
-      <summary style="padding:10px 16px;font-size:0.82rem;font-weight:600;color:var(--text-main);cursor:pointer;user-select:none;list-style-position:inside;">📜 更新日志（v4.31 · 2026-11-21）</summary>
-      <div style="padding:2px 16px 12px;font-size:0.76rem;color:var(--text-light);line-height:1.7;">
-        <p style="margin:6px 0 2px;font-weight:600;color:var(--text-main);">🎵 音效转换与补齐</p>
-        <ul style="margin:2px 0 8px;padding-left:18px;">
-          <li>新增双模式转换：⚡ 快速模式 / 🔬 完整转换</li>
-          <li>音效转换与补齐大幅提速</li>
-          <li>自动补齐缺失的 ogg / aiff 后缀</li>
-          <li>修复 ogg 变 0KB 打不开的问题</li>
-          <li>修复转换卡死不动的问题</li>
-          <li>转换方向选错时给出提示</li>
-        </ul>
-        <p style="margin:6px 0 2px;font-weight:600;color:var(--text-main);">🎼 生成aj音效</p>
-        <ul style="margin:2px 0 8px;padding-left:18px;">
-          <li>新增音效试听</li>
-          <li>新增命名交换调整</li>
-          <li>皮肤包导入后音效自动进试听列表</li>
-          <li>修复多音频命名互相覆盖的问题</li>
-        </ul>
-        <p style="margin:6px 0 2px;font-weight:600;color:var(--text-main);">🖥️ 界面</p>
-        <ul style="margin:2px 0 8px;padding-left:18px;">
-          <li>日志栏改为悬浮显示，可收起</li>
-          <li>修复工具栏超出手机屏幕的问题</li>
-        </ul>
-        <p style="margin:6px 0 2px;font-weight:600;color:var(--text-main);">🧹 其他</p>
-        <ul style="margin:2px 0 0;padding-left:18px;">
-          <li>所有功能产出的包统一删除 GSCopyright.json</li>
-        </ul>
-      </div>
-    </details>
 
     <div class="log-box" id="logBox"></div>
     <button id="logFloatBtn" title="显示/隐藏日志" type="button">✕</button>
@@ -1050,7 +1059,9 @@
       const mainTabs = document.querySelectorAll('.main-tab');
       const sections = {
         skin: document.getElementById('sectionSkin'),
+        editor: document.getElementById('sectionEditor'),
         encrypt: document.getElementById('sectionEncrypt'),
+        mark: document.getElementById('sectionMark'),
         rongcai: document.getElementById('sectionRongcai')
       };
       mainTabs.forEach(tab => {
@@ -1067,6 +1078,9 @@
       const dropZone = document.getElementById('dropZone');
       const fileInput = document.getElementById('fileInput');
       const fileStatus = document.getElementById('fileStatus');
+      const fileStatusHeader = document.getElementById('fileStatusHeader');
+      const fileListPanel = document.getElementById('fileListPanel');
+      const fileListToggle = document.getElementById('fileListToggle');
       const fileName = document.getElementById('fileName');
       const fileSize = document.getElementById('fileSize');
       const directionBadge = document.getElementById('directionBadge');
@@ -1074,7 +1088,7 @@
       const convertBtn = document.getElementById('convertBtn');
       const replaceDemoOnlyBtn = document.getElementById('replaceDemoOnlyBtn');
       const downloadCompressedBtn = document.getElementById('downloadCompressedBtn');
-      const downloadCompressedZipBtn = document.getElementById('downloadCompressedZipBtn');
+      const universalZipBtn = document.getElementById('universalZipBtn');
       const extractAudioBtn = document.getElementById('extractAudioBtn');
       const convertAudioBtn = document.getElementById('convertAudioBtn');
       const audioConvertDirection = document.getElementById('audioConvertDirection');
@@ -1101,7 +1115,6 @@
       const targetCompressRateInput = document.getElementById('targetCompressRate');
       const maxImageSizeInput = document.getElementById('maxImageSize');
 
-      const optMark = document.getElementById('optMark');
       const optReplaceDemo = document.getElementById('optReplaceDemo');
       const optConvert = document.getElementById('optConvert');
       const optCompress = document.getElementById('optCompress');
@@ -1119,7 +1132,6 @@
       const audioReplaceCount = document.getElementById('audioReplaceCount');
       const clearAudioReplaceBtn = document.getElementById('clearAudioReplaceBtn');
       const replaceAudioBtn = document.getElementById('replaceAudioBtn');
-      const replaceAudioZipBtn = document.getElementById('replaceAudioZipBtn');
       let lastAudioReplaceOutputs = [];
 
       const skinReplacePackArea = document.getElementById('skinReplacePackArea');
@@ -1887,14 +1899,46 @@
         return selectedFiles;
       }
 
+      function renderFileListPanel(files) {
+        if (!fileListPanel) return;
+        fileListPanel.innerHTML = files.map((f, i) =>
+          '<label style="display:flex;align-items:center;gap:8px;padding:6px 2px;border-top:1px solid var(--border);cursor:pointer;min-width:0;">' +
+            '<input type="checkbox" class="file-list-check" data-idx="' + i + '" checked style="width:16px;height:16px;accent-color:var(--color-accent);cursor:pointer;flex-shrink:0;margin:0;">' +
+            '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-primary);font-size:13px;">' + escapeHtml(f.name) + '</span>' +
+            '<span style="font-size:12px;color:var(--text-secondary);flex-shrink:0;">' + formatSize(f.size) + '</span>' +
+          '</label>'
+        ).join('');
+      }
+
+      fileStatusHeader.addEventListener('click', (e) => {
+        if (e.target.closest('.file-list-check')) return;
+        const open = fileListPanel.style.display !== 'none';
+        fileListPanel.style.display = open ? 'none' : 'block';
+        fileListToggle.textContent = open ? '▾ 展开' : '▴ 收起';
+        fileStatus.style.borderRadius = open ? '60px' : '16px';
+      });
+
+      fileListPanel.addEventListener('change', (e) => {
+        const cb = e.target.closest('.file-list-check');
+        if (!cb) return;
+        if (cb.checked) return;
+        if (isProcessing) { cb.checked = true; alert('正在处理中，请稍候再操作'); return; }
+        const idx = parseInt(cb.dataset.idx);
+        if (selectedFiles[idx]) {
+          const removed = selectedFiles.splice(idx, 1)[0];
+          log('🗑️ 已从列表移除: ' + removed.name);
+          updateFileStatus(selectedFiles);
+        }
+      });
+
       function updateFileStatus(files) {
         if (files && files.length > 0) {
           clearFilesBtn.disabled = false;
-          const names = files.map(f => f.name).join(', ');
           const totalSize = files.reduce((acc, f) => acc + f.size, 0);
           fileStatus.style.display = 'flex';
-          fileName.textContent = names.length > 40 ? names.slice(0, 38) + '…' : names;
-          fileSize.textContent = formatSize(totalSize);
+          fileName.textContent = files.length === 1 ? files[0].name : (files[0].name + ' 等 ' + files.length + ' 个文件');
+          fileSize.textContent = files.length > 1 ? (files.length + ' 个 · ' + formatSize(totalSize)) : formatSize(totalSize);
+          renderFileListPanel(files);
           
           let dir = '';
           if (currentMode === 'bds2bdi') dir = '→ iOS';
@@ -1912,12 +1956,11 @@
           extractAudioBtn.disabled = false;
           convertAudioBtn.disabled = false;
           downloadCompressedBtn.disabled = !isCompressed;
-          downloadCompressedZipBtn.disabled = !isCompressed;
           replaceAudioBtn.disabled = (currentMode !== 'audioReplace' || audioReplaceFiles.length === 0);
           updateSkinReplaceBtnState();
           renderSkinImageList();
           executeSelectedBtn.disabled = false;
-          exportZipBtn.disabled = false;
+          universalZipBtn.disabled = false;
           btnMark.disabled = false;
           
           // 如果是生成音效模式，导入皮肤包后直接激活生成按钮
@@ -1964,10 +2007,9 @@
           extractAudioBtn.disabled = true;
           convertAudioBtn.disabled = true;
           downloadCompressedBtn.disabled = true;
-          downloadCompressedZipBtn.disabled = true;
           replaceAudioBtn.disabled = true;
           executeSelectedBtn.disabled = true;
-          exportZipBtn.disabled = true;
+          universalZipBtn.disabled = true;
           btnMark.disabled = true;
           
           if (currentMode === 'audioGen') {
@@ -2888,20 +2930,18 @@
         await flushEditorToFiles();
         const files = getFilesToProcess();
         if (!files || files.length === 0) { alert('请先上传皮肤包文件'); return; }
-        const doMark = optMark.checked && markText.value.trim().length > 0;
+        const doMark = false; /* 打标已移至「🔏 字体打标」页签 */
         const doReplaceDemo = optReplaceDemo.checked && customDemoBlob;
         const doConvert = optConvert.checked && (currentMode === 'bds2bdi' || currentMode === 'bdi2bds');
         const doCompress = optCompress.checked;
         const doDeleteHintPop = optDeleteHintPop.checked;
         if (!doMark && !doReplaceDemo && !doConvert && !doCompress && !doDeleteHintPop) { alert('请至少勾选一个有效操作'); return; }
-        if (doMark && !markText.value.trim()) { alert('勾选了打标但未填写标记内容'); return; }
         if (doReplaceDemo && !customDemoBlob) { alert('勾选了替换demo但未上传图片'); return; }
         if (doConvert && currentMode !== 'bds2bdi' && currentMode !== 'bdi2bds') { alert('当前模式不支持转换'); return; }
         executeSelectedBtn.disabled = true;
         executeSelectedBtn.textContent = '⏳ 处理中...';
         clearLog();
-        const markContent = markText.value.trim();
-        if (doMark && markContent) { savedMarkContent = markContent; isMarked = true; }
+        const markContent = '';
         log('▶ 执行选中操作: ' +
           (doMark ? '打标 ' : '') +
           (doReplaceDemo ? '替换demo ' : '') +
@@ -2920,13 +2960,57 @@
         }
       });
 
-      /* 独立的 zip 导出：把当前包（含已做过的编辑）以 .zip 后缀下载 */
-      exportZipBtn.addEventListener('click', async function() {
+      /* 通用 zip 下载：音效替换结果 > 压缩结果 > 当前文件池导出 */
+      universalZipBtn.addEventListener('click', async function() {
         await flushEditorToFiles();
+        /* 1) 音效替换有结果：打包替换结果 */
+        if (currentMode === 'audioReplace' && lastAudioReplaceOutputs.length > 0) {
+          universalZipBtn.disabled = true;
+          universalZipBtn.textContent = '⏳ 打包中...';
+          try {
+            if (lastAudioReplaceOutputs.length === 1) {
+              const o = lastAudioReplaceOutputs[0];
+              const zipName = o.name.replace(/\.(bds|bdi|zip)$/i, '') + '.zip';
+              saveAs(o.blob, zipName);
+              log('📦 已按 zip 格式下载: ' + zipName);
+            } else {
+              const zip = new JSZip();
+              for (const o of lastAudioReplaceOutputs) zip.file(o.name, o.blob);
+              const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
+              saveAs(blob, '音效替换_' + lastAudioReplaceOutputs.length + '个文件.zip');
+              log('📦 已按 zip 格式下载，共 ' + lastAudioReplaceOutputs.length + ' 个文件');
+            }
+          } catch (err) {
+            log('❌ zip 下载失败: ' + err.message);
+          } finally {
+            universalZipBtn.disabled = false;
+            universalZipBtn.textContent = '📦 下载为 zip';
+          }
+          return;
+        }
+        /* 2) 已压缩：打包压缩结果 */
+        if (isCompressed && compressedFiles.length > 0) {
+          universalZipBtn.disabled = true;
+          universalZipBtn.textContent = '⏳ 打包中...';
+          try {
+            const resultZip = new JSZip();
+            compressedFiles.forEach(f => resultZip.file(f.name, f.blob));
+            const blob = await resultZip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
+            saveAs(blob, '压缩后_' + compressedFiles.length + '个文件.zip');
+            log('📦 已按 zip 格式下载，共 ' + compressedFiles.length + ' 个文件');
+          } catch (err) {
+            log('❌ zip 下载失败: ' + err.message);
+          } finally {
+            universalZipBtn.disabled = false;
+            universalZipBtn.textContent = '📦 下载为 zip';
+          }
+          return;
+        }
+        /* 3) 默认：把当前包（含已做过的编辑）以 .zip 后缀导出 */
         const files = getFilesToProcess();
         if (!files || files.length === 0) { alert('请先上传皮肤包文件'); return; }
-        exportZipBtn.disabled = true;
-        exportZipBtn.textContent = '⏳ 导出中...';
+        universalZipBtn.disabled = true;
+        universalZipBtn.textContent = '⏳ 导出中...';
         try {
           const zipOutputs = [];
           for (const f of files) {
@@ -2950,8 +3034,8 @@
         } catch (err) {
           log('❌ zip 导出失败: ' + err.message);
         } finally {
-          exportZipBtn.disabled = false;
-          exportZipBtn.textContent = '📦 导出为 zip 格式';
+          universalZipBtn.disabled = false;
+          universalZipBtn.textContent = '📦 下载为 zip';
         }
       });
 
@@ -3598,7 +3682,7 @@
         isCompressed = true;
         compressedFiles = newCompressedFiles;
         downloadCompressedBtn.disabled = false;
-        downloadCompressedZipBtn.disabled = false;
+        universalZipBtn.disabled = false;
         isProcessing = false;
         log('✅ 压缩完成');
       }
@@ -3858,7 +3942,7 @@
         compressBtn.disabled = false;
         compressBtn.textContent = '🗜️ 压缩图片';
         downloadCompressedBtn.disabled = false;
-        downloadCompressedZipBtn.disabled = false;
+        universalZipBtn.disabled = false;
         updateFileStatus(selectedFiles);
         log('✅ 压缩完成');
         const outFiles = compressedFiles.map(f => new File([f.blob], f.name));
@@ -3880,24 +3964,6 @@
               saveAs(blob, '压缩后_' + compressedFiles.length + '个文件.zip');
               log('💾 已下载压缩后的文件包');
             });
-        }
-      });
-
-      downloadCompressedZipBtn.addEventListener('click', async function() {
-        if (!isCompressed || compressedFiles.length === 0) { alert('请先压缩图片'); return; }
-        downloadCompressedZipBtn.disabled = true;
-        downloadCompressedZipBtn.textContent = '⏳ 打包中...';
-        try {
-          const resultZip = new JSZip();
-          compressedFiles.forEach(f => resultZip.file(f.name, f.blob));
-          const blob = await resultZip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
-          saveAs(blob, '压缩后_' + compressedFiles.length + '个文件.zip');
-          log('📦 已按 zip 格式下载，共 ' + compressedFiles.length + ' 个文件');
-        } catch (err) {
-          log('❌ zip 下载失败: ' + err.message);
-        } finally {
-          downloadCompressedZipBtn.disabled = false;
-          downloadCompressedZipBtn.textContent = '📦 下载为 zip';
         }
       });
 
@@ -4617,7 +4683,7 @@
             const outName = applyTimeStampToName(finalFile.name);
             saveAs(outBlob, outName);
             lastAudioReplaceOutputs = [{ name: outName, blob: outBlob }];
-            replaceAudioZipBtn.disabled = false;
+            universalZipBtn.disabled = false;
             setSharedFiles([new File([outBlob], outName)], '音效替换');
             clearEditorSessions();
             log('✅ 音效替换成功，已暂存到“继续编辑”池: ' + outName);
@@ -4659,37 +4725,12 @@
         const outBlob = await resultZip.generateAsync({ type: 'blob', compression: 'STORE' });
         const outZipName = customNameRaw ? (customNameRaw + '.zip') : ('音效替换_' + targetFiles.length + '个文件.zip');
         saveAs(outBlob, outZipName);
-        if (lastAudioReplaceOutputs.length > 0) replaceAudioZipBtn.disabled = false;
+        if (lastAudioReplaceOutputs.length > 0) universalZipBtn.disabled = false;
         setSharedFiles([new File([outBlob], outZipName)], '批量音效替换');
         clearEditorSessions();
         log('✅ 批量替换完成，已暂存到共享池');
         replaceAudioBtn.disabled = false;
         replaceAudioBtn.textContent = '🔊 替换音效并下载';
-      });
-
-      replaceAudioZipBtn.addEventListener('click', async function() {
-        if (lastAudioReplaceOutputs.length === 0) { alert('请先执行一次音效替换'); return; }
-        replaceAudioZipBtn.disabled = true;
-        replaceAudioZipBtn.textContent = '⏳ 打包中...';
-        try {
-          if (lastAudioReplaceOutputs.length === 1) {
-            const o = lastAudioReplaceOutputs[0];
-            const zipName = o.name.replace(/\.(bds|bdi|zip)$/i, '') + '.zip';
-            saveAs(o.blob, zipName);
-            log('📦 已按 zip 格式下载: ' + zipName);
-          } else {
-            const zip = new JSZip();
-            for (const o of lastAudioReplaceOutputs) zip.file(o.name, o.blob);
-            const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
-            saveAs(blob, '音效替换_' + lastAudioReplaceOutputs.length + '个文件.zip');
-            log('📦 已按 zip 格式下载，共 ' + lastAudioReplaceOutputs.length + ' 个文件');
-          }
-        } catch (err) {
-          log('❌ zip 下载失败: ' + err.message);
-        } finally {
-          replaceAudioZipBtn.disabled = false;
-          replaceAudioZipBtn.textContent = '📦 下载为 zip';
-        }
       });
 
       // ===== 批量生成 aj / ajhc / ajgn 音效 =====
@@ -5277,7 +5318,9 @@
           document.querySelectorAll('#modeTabs .mode-tab').forEach(t => t.classList.remove('active'));
           this.classList.add('active');
           currentMode = this.dataset.mode;
-          
+          document.getElementById('markToolWrap').style.display =
+            (currentMode === 'bdi2bds' || currentMode === 'bds2bdi') ? 'block' : 'none';
+
           if (currentMode === 'bds2bdi') {
             uploadIcon.textContent = '📂';
             uploadText.textContent = '点击或拖拽上传 .bds 皮肤包';
