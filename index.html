@@ -467,6 +467,7 @@
         <button class="mode-tab" data-mode="audioConvert">🔄 音效转换</button>
         <button class="mode-tab" data-mode="audioReplace">🔊 替换音效</button>
         <button class="mode-tab" data-mode="audioGen">🎼 生成aj音效</button>
+        <button class="mode-tab" data-mode="skinReplace">🧩 皮肤替换包</button>
       </div>
 
       <!-- 区域一：皮肤包导入区，无论是哪个模式永远显示 -->
@@ -516,6 +517,36 @@
         <span class="clear-demo" id="clearAudioGenBtn" style="cursor:pointer;">✕</span>
       </div>
       <div id="audioGenList" class="audio-gen-list" style="display:none;"></div>
+
+      <!-- 区域三：皮肤替换包（选了皮肤替换包模式就显示） -->
+      <div id="skinReplacePackArea" class="audio-replace-area" style="display:none;">
+        <div class="upload-icon">🧩</div>
+        <div class="upload-text">点击或拖拽上传皮肤替换包 (.zip)</div>
+        <div class="upload-hint">内含「日间」「夜间」文件夹里的图片和根目录 demo.png</div>
+        <input type="file" id="skinReplacePackInput" accept=".zip" style="display:none;">
+      </div>
+      <div id="skinReplacePackStatus" class="audio-replace-status" style="display: none;">
+        <span class="file-name" id="skinReplacePackName">未命名</span>
+        <span class="badge" id="skinReplacePackCount">0 张图片</span>
+        <span class="clear-demo" id="clearSkinReplacePackBtn" style="cursor:pointer;">✕</span>
+      </div>
+
+      <!-- 皮肤包内图片列表：预览 / 删除（皮肤替换包模式显示，默认折叠） -->
+      <div id="skinImgPanel" style="display:none;margin:8px 0 0;padding:10px 12px;background:var(--bg-subtle);border-radius:12px;border:1px solid var(--border);">
+        <div id="skinImgHeader" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;cursor:pointer;user-select:none;">
+          <span style="font-size:13px;font-weight:600;color:var(--text-main);">🖼️ 皮肤包内图片 <span id="skinImgToggle" style="font-size:11px;color:var(--text-light);">（点这里展开）</span></span>
+          <span id="skinImgSummary" style="font-size:12px;color:var(--text-light);"></span>
+        </div>
+        <div id="skinImgTip" style="margin-top:4px;font-size:11px;color:var(--text-light);display:none;">点图放大预览 · 点 ✕ 删除（日间/夜间同名同步）· 点 ↺ 恢复</div>
+        <div id="skinImgList" style="margin-top:8px;display:none;flex-direction:column;gap:10px;max-height:420px;overflow-y:auto;"></div>
+      </div>
+      <div id="skinImgModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);align-items:center;justify-content:center;padding:16px;" onclick="if(event.target===this)this.style.display='none';">
+        <div style="position:relative;max-width:92vw;max-height:86vh;background:#fff;border-radius:14px;padding:10px;display:flex;flex-direction:column;align-items:center;">
+          <img id="skinImgModalImg" src="#" alt="预览" style="max-width:86vw;max-height:74vh;object-fit:contain;">
+          <div id="skinImgModalName" style="margin-top:8px;font-size:12px;color:#475569;word-break:break-all;text-align:center;"></div>
+          <button id="skinImgModalClose" style="margin-top:8px;padding:6px 18px;border:none;border-radius:10px;background:#1e293b;color:#fff;font-size:14px;">关闭</button>
+        </div>
+      </div>
 
       <div class="progress-container" id="progressContainer">
         <div class="progress-bar" id="progressBar">0%</div>
@@ -574,6 +605,11 @@
         <button class="action-btn replace-audio" id="replaceAudioBtn" disabled>🔊 替换音效并下载</button>
         <button class="action-btn secondary" id="replaceAudioZipBtn" disabled>📦 下载为 zip</button>
         <button class="action-btn genaudio" id="genAudioBtn" style="display:none;" disabled>🎼 生成aj音效并下载</button>
+        <button class="action-btn replace-audio" id="skinReplaceBtn" style="display:none;" disabled>🧩 替换图片并下载</button>
+      </div>
+
+      <div class="action-row" id="audioReplaceNameRow" style="display:none;margin-top:6px;">
+        <input type="text" id="audioReplaceCustomName" placeholder="✏️ 自定义文件名（可选，不填则用原文件名，不用写后缀）" style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid var(--border);font-size:14px;background:var(--item-bg);color:var(--text-main);">
       </div>
 
       <div class="action-row" style="margin-top: 8px;">
@@ -806,6 +842,19 @@
         <pre id="fontExtractContent" style="margin-top:6px;font-size:13px;white-space:pre-wrap;word-break:break-all;"></pre>
       </div>
     </div>
+
+    <details style="margin:14px 0 4px;padding:0;background:var(--bg-subtle);border-radius:14px;border:1px solid rgba(0,0,0,0.06);overflow:hidden;">
+      <summary style="padding:10px 16px;font-size:0.82rem;font-weight:600;color:var(--text-main);cursor:pointer;user-select:none;list-style-position:inside;">📜 更新日志（v4.34 · 2026-11-28）</summary>
+      <div style="padding:2px 16px 12px;font-size:0.76rem;color:var(--text-light);line-height:1.7;">
+        <ul style="margin:6px 0 2px;padding-left:18px;">
+          <li>新增「🧩 皮肤替换包」模式：导入含日间/夜间文件夹和根目录 demo.png 的替换包，一键替换皮肤包内对应图片</li>
+          <li>皮肤替换包模式支持缩略图预览（默认折叠，四张一排带文件名）和删除皮肤包内的图片文件，日间/夜间同名图片同步删除</li>
+          <li>修复缩略图不显示图片的问题</li>
+          <li>替换音效支持自定义输出文件名</li>
+          <li>替换音效模式下「提取所有音效」改为从音效包提取</li>
+        </ul>
+      </div>
+    </details>
 
     <details style="margin:14px 0 4px;padding:0;background:var(--bg-subtle);border-radius:14px;border:1px solid rgba(0,0,0,0.06);overflow:hidden;">
       <summary style="padding:10px 16px;font-size:0.82rem;font-weight:600;color:var(--text-main);cursor:pointer;user-select:none;list-style-position:inside;">📜 更新日志（v4.32 · 2026-11-25）</summary>
@@ -1072,6 +1121,191 @@
       const replaceAudioBtn = document.getElementById('replaceAudioBtn');
       const replaceAudioZipBtn = document.getElementById('replaceAudioZipBtn');
       let lastAudioReplaceOutputs = [];
+
+      const skinReplacePackArea = document.getElementById('skinReplacePackArea');
+      const skinReplacePackInput = document.getElementById('skinReplacePackInput');
+      const skinReplacePackStatus = document.getElementById('skinReplacePackStatus');
+      const skinReplacePackName = document.getElementById('skinReplacePackName');
+      const skinReplacePackCount = document.getElementById('skinReplacePackCount');
+      const clearSkinReplacePackBtn = document.getElementById('clearSkinReplacePackBtn');
+      const skinReplaceBtn = document.getElementById('skinReplaceBtn');
+      const audioReplaceNameRow = document.getElementById('audioReplaceNameRow');
+      const audioReplaceCustomName = document.getElementById('audioReplaceCustomName');
+      let skinReplacePackZip = null;
+      let skinReplacePackFile = null;
+      let skinReplaceImages = { light: [], dark: [], demo: null };
+      const skinImgPanel = document.getElementById('skinImgPanel');
+      const skinImgList = document.getElementById('skinImgList');
+      const skinImgSummary = document.getElementById('skinImgSummary');
+      const skinImgModal = document.getElementById('skinImgModal');
+      const skinImgModalImg = document.getElementById('skinImgModalImg');
+      const skinImgModalName = document.getElementById('skinImgModalName');
+      document.getElementById('skinImgModalClose').addEventListener('click', () => { skinImgModal.style.display = 'none'; });
+      /* 记录每个皮肤包里被勾选删除的图片：包名 -> Set(zip内路径) */
+      let skinDeleteMap = {};
+      let skinThumbUrls = [];
+      let skinImgRenderSeq = 0;
+      let skinImgPanelOpen = false;
+      document.getElementById('skinImgHeader').addEventListener('click', () => {
+        skinImgPanelOpen = !skinImgPanelOpen;
+        skinImgList.style.display = skinImgPanelOpen ? 'flex' : 'none';
+        document.getElementById('skinImgTip').style.display = skinImgPanelOpen ? 'block' : 'none';
+        document.getElementById('skinImgToggle').textContent = skinImgPanelOpen ? '（点这里收起）' : '（点这里展开）';
+      });
+      function updateSkinReplaceBtnState() {
+        skinReplaceBtn.disabled = !(currentMode === 'skinReplace' && skinReplacePackZip && getFilesToProcess().length > 0);
+      }
+      function isSkinImageKey(key) {
+        const p = String(key).replace(/\\/g, '/');
+        const base = p.split('/').pop();
+        return /\.(png|jpg|jpeg|webp|gif)$/i.test(base);
+      }
+      async function renderSkinImageList() {
+        const seq = ++skinImgRenderSeq;
+        if (currentMode !== 'skinReplace') { skinImgPanel.style.display = 'none'; return; }
+        const files = getFilesToProcess();
+        if (!files || files.length === 0) { skinImgPanel.style.display = 'none'; skinImgList.innerHTML = ''; return; }
+        skinImgPanel.style.display = 'block';
+        skinImgList.innerHTML = '';
+        skinImgList.style.display = skinImgPanelOpen ? 'flex' : 'none';
+        document.getElementById('skinImgTip').style.display = skinImgPanelOpen ? 'block' : 'none';
+        document.getElementById('skinImgToggle').textContent = skinImgPanelOpen ? '（点这里收起）' : '（点这里展开）';
+        for (const u of skinThumbUrls) { try { URL.revokeObjectURL(u); } catch (e) {} }
+        skinThumbUrls = [];
+        let total = 0, deleted = 0;
+        const allEntries = [];
+        const refreshSummary = () => {
+          let t = 0, d = 0;
+          for (const fe of allEntries) {
+            t += fe.imgEntries.length;
+            d += fe.imgEntries.filter(x => fe.delSet.has(x.key)).length;
+          }
+          skinImgSummary.textContent = '共 ' + t + ' 张' + (d > 0 ? '，已标记删除 ' + d + ' 张' : '');
+        };
+        for (const file of files) {
+          if (!skinDeleteMap[file.name]) skinDeleteMap[file.name] = new Set();
+          const delSet = skinDeleteMap[file.name];
+          let zip;
+          try { zip = await JSZip.loadAsync(await file.arrayBuffer()); } catch (e) { continue; }
+          if (seq !== skinImgRenderSeq) return;
+          /* 收集包内图片并分组：light / dark / 其他 */
+          const imgEntries = [];
+          for (const key of Object.keys(zip.files)) {
+            const entry = zip.files[key];
+            if (entry.dir) continue;
+            if (isGSCopyrightFile(key) || isMacJunkEntry(key) || isLightDarkDemoFile(key)) continue;
+            if (!isSkinImageKey(key)) continue;
+            const p = key.replace(/\\/g, '/');
+            const segs = p.split('/');
+            const dirs = segs.slice(0, -1).map(s => s.toLowerCase());
+            const group = dirs.some(d => d === 'light' || d === '日间') ? 'light'
+              : dirs.some(d => d === 'dark' || d === '夜间') ? 'dark' : null;
+            imgEntries.push({ key, entry, base: segs[segs.length - 1].toLowerCase(), group });
+          }
+          total += imgEntries.length;
+          deleted += imgEntries.filter(ie => delSet.has(ie.key)).length;
+          allEntries.push({ imgEntries, delSet });
+          const group = document.createElement('div');
+          group.style.cssText = 'display:flex;flex-direction:column;gap:4px;';
+          const title = document.createElement('div');
+          title.style.cssText = 'font-size:12px;font-weight:600;color:var(--text-sub);';
+          title.textContent = '📦 ' + file.name;
+          group.appendChild(title);
+          if (imgEntries.length === 0) {
+            const empty = document.createElement('div');
+            empty.style.cssText = 'font-size:12px;color:var(--text-light);';
+            empty.textContent = '（包内没有图片文件）';
+            group.appendChild(empty);
+          } else {
+            const grid = document.createElement('div');
+            grid.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:8px;';
+            const cellRefs = [];
+            for (const ie of imgEntries) {
+              const isDel = delSet.has(ie.key);
+              const cell = document.createElement('div');
+              cell.style.cssText = 'display:flex;flex-direction:column;gap:2px;min-width:0;';
+              const box = document.createElement('div');
+              box.style.cssText = 'position:relative;aspect-ratio:1/1;border-radius:8px;overflow:hidden;background:var(--item-bg);border:1px solid var(--item-border);cursor:pointer;' + (isDel ? 'opacity:0.35;' : '');
+              const thumb = document.createElement('img');
+              thumb.style.cssText = 'width:100%;height:100%;object-fit:contain;display:block;';
+              thumb.alt = ie.key;
+              try {
+                const blob = await ie.entry.async('blob');
+                if (seq !== skinImgRenderSeq) return;
+                const url = URL.createObjectURL(blob);
+                skinThumbUrls.push(url);
+                thumb.src = url;
+              } catch (e) { box.textContent = '⚠️'; }
+              thumb.onerror = () => { if (seq === skinImgRenderSeq) thumb.style.display = 'none'; };
+              /* 点缩略图 = 大图预览 */
+              box.addEventListener('click', async () => {
+                try {
+                  const blob = await zip.files[ie.key].async('blob');
+                  if (skinImgModalImg.src && skinImgModalImg.src.startsWith('blob:')) URL.revokeObjectURL(skinImgModalImg.src);
+                  skinImgModalImg.src = URL.createObjectURL(blob);
+                  skinImgModalName.textContent = file.name + ' → ' + ie.key;
+                  skinImgModal.style.display = 'flex';
+                } catch (e) { alert('图片预览失败: ' + e.message); }
+              });
+              /* 右上角删除角标 */
+              const badge = document.createElement('span');
+              badge.textContent = isDel ? '↺' : '✕';
+              badge.style.cssText = 'position:absolute;top:0;right:0;min-width:20px;height:20px;line-height:20px;text-align:center;font-size:12px;border-radius:0 0 0 8px;background:' + (isDel ? 'rgba(26,76,140,0.9);color:#fff;' : 'rgba(192,57,43,0.9);color:#fff;') + 'z-index:2;';
+              badge.addEventListener('click', (e) => {
+                e.stopPropagation();
+                /* 日间/夜间同名图片同步删除或恢复 */
+                const adding = !delSet.has(ie.key);
+                const keysToToggle = new Set([ie.key]);
+                if (ie.group) {
+                  for (const other of imgEntries) {
+                    if (other.key !== ie.key && other.group && other.group !== ie.group && other.base === ie.base) keysToToggle.add(other.key);
+                  }
+                }
+                for (const k of keysToToggle) { if (adding) delSet.add(k); else delSet.delete(k); }
+                /* 原地更新受影响格子，不重建列表，避免闪烁 */
+                for (const ref of cellRefs) {
+                  if (!keysToToggle.has(ref.ie.key)) continue;
+                  const nowDel = delSet.has(ref.ie.key);
+                  ref.box.style.opacity = nowDel ? '0.35' : '1';
+                  ref.badge.textContent = nowDel ? '↺' : '✕';
+                  ref.badge.style.background = nowDel ? 'rgba(26,76,140,0.9)' : 'rgba(192,57,43,0.9)';
+                  ref.label.style.textDecoration = nowDel ? 'line-through' : '';
+                  let mask = ref.box.querySelector('.del-mask');
+                  if (nowDel && !mask) {
+                    mask = document.createElement('span');
+                    mask.className = 'del-mask';
+                    mask.textContent = '已删';
+                    mask.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;color:#c0392b;font-weight:600;pointer-events:none;';
+                    ref.box.appendChild(mask);
+                  } else if (!nowDel && mask) {
+                    mask.remove();
+                  }
+                }
+                refreshSummary();
+              });
+              box.appendChild(thumb);
+              box.appendChild(badge);
+              if (isDel) {
+                const mask = document.createElement('span');
+                mask.textContent = '已删';
+                mask.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;color:#c0392b;font-weight:600;pointer-events:none;';
+                box.appendChild(mask);
+              }
+              const label = document.createElement('div');
+              label.textContent = ie.key.split('/').pop();
+              label.title = ie.key;
+              label.style.cssText = 'font-size:10px;color:var(--text-sub);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' + (isDel ? 'text-decoration:line-through;' : '');
+              cell.appendChild(box);
+              cell.appendChild(label);
+              grid.appendChild(cell);
+              cellRefs.push({ ie, box, badge, label });
+            }
+            group.appendChild(grid);
+          }
+          skinImgList.appendChild(group);
+        }
+        skinImgSummary.textContent = '共 ' + total + ' 张' + (deleted > 0 ? '，已标记删除 ' + deleted + ' 张' : '');
+      }
 
       const audioGenArea = document.getElementById('audioGenArea');
       const audioGenInput = document.getElementById('audioGenInput');
@@ -1667,6 +1901,7 @@
           else if (currentMode === 'bdi2bds') dir = '→ 安卓';
           else if (currentMode === 'audioReplace') dir = '🔊 替换音效';
           else if (currentMode === 'audioGen') dir = '🎼 生成aj音效';
+          else if (currentMode === 'skinReplace') dir = '🧩 皮肤替换';
           else dir = '🎵 音效';
           
           directionBadge.textContent = dir;
@@ -1679,6 +1914,8 @@
           downloadCompressedBtn.disabled = !isCompressed;
           downloadCompressedZipBtn.disabled = !isCompressed;
           replaceAudioBtn.disabled = (currentMode !== 'audioReplace' || audioReplaceFiles.length === 0);
+          updateSkinReplaceBtnState();
+          renderSkinImageList();
           executeSelectedBtn.disabled = false;
           exportZipBtn.disabled = false;
           btnMark.disabled = false;
@@ -3856,9 +4093,17 @@
 
       extractAudioBtn.addEventListener('click', async function() {
         await flushEditorToFiles();
-        const filesToProcess = getFilesToProcess();
+        let filesToProcess = getFilesToProcess();
+        /* 替换音效模式下：从音效包提取，而不是主皮肤包 */
+        if (currentMode === 'audioReplace' && audioReplaceFiles.length > 0) {
+          const packZip = new JSZip();
+          for (const af of audioReplaceFiles) packZip.file(af.name, await af.entry.async('blob'));
+          const packBlob = await packZip.generateAsync({ type: 'blob', compression: 'STORE' });
+          filesToProcess = [new File([packBlob], '音效包.zip')];
+        }
         if (!filesToProcess || filesToProcess.length === 0) { alert('请先上传皮肤包'); return; }
         clearLog();
+        if (currentMode === 'audioReplace' && audioReplaceFiles.length > 0) log('🎵 替换音效模式：从音效包提取音效');
         log('🎵 开始提取音效');
         const resultZip = new JSZip();
         let totalAudio = 0;
@@ -4063,6 +4308,179 @@
         log('↩️ 已清除音效包');
       });
 
+      /* ===== 皮肤替换包 ===== */
+      skinReplacePackArea.addEventListener('click', () => skinReplacePackInput.click());
+      skinReplacePackArea.addEventListener('dragover', (e) => { e.preventDefault(); skinReplacePackArea.classList.add('dragover'); });
+      skinReplacePackArea.addEventListener('dragleave', () => skinReplacePackArea.classList.remove('dragover'));
+      skinReplacePackArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        skinReplacePackArea.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) handleSkinReplacePack(e.dataTransfer.files[0]);
+      });
+      skinReplacePackInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) handleSkinReplacePack(e.target.files[0]);
+        skinReplacePackInput.value = '';
+      });
+
+      async function handleSkinReplacePack(file) {
+        if (!file) return;
+        if (!file.name.toLowerCase().endsWith('.zip')) { alert('请上传 .zip 格式的皮肤替换包'); return; }
+        try {
+          const zip = await JSZip.loadAsync(await file.arrayBuffer());
+          const light = [], dark = []; let demo = null;
+          for (const key of Object.keys(zip.files)) {
+            const entry = zip.files[key];
+            if (entry.dir) continue;
+            const p = key.replace(/\\/g, '/');
+            const segs = p.split('/');
+            const base = segs[segs.length - 1];
+            if (!/\.(png|jpg|jpeg|webp|gif)$/i.test(base)) continue;
+            const dirs = segs.slice(0, -1).map(s => s.toLowerCase());
+            if (dirs.some(d => d === '日间' || d === 'light')) light.push({ path: p, entry, name: base });
+            else if (dirs.some(d => d === '夜间' || d === 'dark')) dark.push({ path: p, entry, name: base });
+            else if (base.toLowerCase() === 'demo.png') demo = { path: p, entry, name: base };
+          }
+          if (light.length === 0 && dark.length === 0 && !demo) { alert('替换包里没有找到「日间」「夜间」文件夹里的图片，也没有根目录 demo.png'); return; }
+          skinReplacePackZip = zip;
+          skinReplacePackFile = file;
+          skinReplaceImages = { light, dark, demo };
+          skinReplacePackStatus.style.display = 'flex';
+          skinReplacePackName.textContent = file.name;
+          skinReplacePackCount.textContent = (light.length + dark.length + (demo ? 1 : 0)) + ' 张图片';
+          updateSkinReplaceBtnState();
+          log('✅ 皮肤替换包加载成功: 日间 ' + light.length + ' 张 / 夜间 ' + dark.length + ' 张 / 根目录 demo.png ' + (demo ? '有' : '无') + ' (' + file.name + ')');
+        } catch (err) { alert('替换包解析失败: ' + err.message); }
+      }
+
+      clearSkinReplacePackBtn.addEventListener('click', function() {
+        skinReplacePackZip = null;
+        skinReplacePackFile = null;
+        skinReplaceImages = { light: [], dark: [], demo: null };
+        skinReplacePackStatus.style.display = 'none';
+        updateSkinReplaceBtnState();
+        log('↩️ 已清除皮肤替换包');
+      });
+
+      /* 在目标皮肤包里按 日间(light)/夜间(dark) 分组替换图片；demo.png 替换根目录的 */
+      async function replaceImagesInSkin(zip, packImages, logFunc) {
+        const allKeys = Object.keys(zip.files).filter(k => !zip.files[k].dir);
+        const lightTargets = [], darkTargets = [], rootDemos = [];
+        for (const key of allKeys) {
+          const p = key.replace(/\\/g, '/');
+          const segs = p.split('/');
+          const base = segs[segs.length - 1];
+          if (!/\.(png|jpg|jpeg|webp|gif)$/i.test(base)) continue;
+          const dirs = segs.slice(0, -1).map(s => s.toLowerCase());
+          if (dirs.some(d => d === 'light' || d === '日间')) lightTargets.push(key);
+          else if (dirs.some(d => d === 'dark' || d === '夜间')) darkTargets.push(key);
+          else if (base.toLowerCase() === 'demo.png') rootDemos.push(key);
+        }
+        /* 取某个路径相对其日间/夜间文件夹的子路径，用于精确对应 */
+        function relInGroup(p) {
+          const segs = p.split('/');
+          for (let i = 0; i < segs.length - 1; i++) {
+            const low = segs[i].toLowerCase();
+            if (low === 'light' || low === 'dark' || low === '日间' || low === '夜间') return segs.slice(i + 1).join('/').toLowerCase();
+          }
+          return segs[segs.length - 1].toLowerCase();
+        }
+        async function replaceGroup(targetKeys, sources, label) {
+          let count = 0;
+          const used = new Set();
+          for (const src of sources) {
+            const srcRel = relInGroup(src.path);
+            const srcBase = src.name.toLowerCase();
+            let matched = targetKeys.find(k => !used.has(k) && relInGroup(k.replace(/\\/g, '/')) === srcRel)
+              || targetKeys.find(k => !used.has(k) && k.replace(/\\/g, '/').split('/').pop().toLowerCase() === srcBase);
+            if (matched) {
+              const blob = await src.entry.async('blob');
+              zip.file(matched, blob);
+              used.add(matched);
+              count++;
+              logFunc('🖼️ 替换[' + label + ']: ' + matched);
+            } else {
+              logFunc('⚠️ 目标包里没有找到对应的图片，跳过[' + label + ']: ' + src.name);
+            }
+          }
+          return count;
+        }
+        const cLight = await replaceGroup(lightTargets, packImages.light, '日间');
+        const cDark = await replaceGroup(darkTargets, packImages.dark, '夜间');
+        let cDemo = 0;
+        if (packImages.demo) {
+          if (rootDemos.length > 0) {
+            const blob = await packImages.demo.entry.async('blob');
+            for (const k of rootDemos) { zip.file(k, blob); cDemo++; }
+            logFunc('🖼️ 替换[根目录 demo.png] × ' + rootDemos.length);
+          } else {
+            logFunc('⚠️ 目标包里没有找到根目录 demo.png，未替换');
+          }
+        }
+        return { light: cLight, dark: cDark, demo: cDemo };
+      }
+
+      skinReplaceBtn.addEventListener('click', async function() {
+        await flushEditorToFiles();
+        const filesToProcess = getFilesToProcess();
+        if (!filesToProcess || filesToProcess.length === 0) { alert('请先上传皮肤包'); return; }
+        if (!skinReplacePackZip) { alert('请先上传皮肤替换包 (.zip)'); return; }
+        skinReplaceBtn.disabled = true;
+        skinReplaceBtn.textContent = '⏳ 替换中...';
+        clearLog();
+        log('🧩 开始皮肤替换');
+        try {
+          const decryptedProcessed = await autoDecryptFileList(filesToProcess, '皮肤替换池');
+          if (decryptedProcessed.decryptedCount > 0) {
+            maybeShowDecryptToast(decryptedProcessed, filesToProcess.length);
+            log('🔓 已自动解密 ' + decryptedProcessed.decryptedCount + ' 个加密皮肤包，准备处理...');
+          }
+          const targetFiles = decryptedProcessed.files;
+          const outZip = new JSZip();
+          let okCount = 0;
+          for (let idx = 0; idx < targetFiles.length; idx++) {
+            const file = targetFiles[idx];
+            try {
+              const zip = await JSZip.loadAsync(await file.arrayBuffer());
+              sanitizeZipEntries(zip, log);
+              /* 应用勾选删除的图片 */
+              const delSet = skinDeleteMap[file.name];
+              if (delSet && delSet.size > 0) {
+                let removed = 0;
+                for (const key of delSet) {
+                  if (zip.files[key] && !zip.files[key].dir) { zip.remove(key); removed++; }
+                }
+                if (removed > 0) log('🗑️ 已删除勾选的图片 × ' + removed);
+              }
+              const res = await replaceImagesInSkin(zip, skinReplaceImages, log);
+              sanitizeZipEntries(zip, log);
+              const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
+              if (targetFiles.length === 1) {
+                saveAs(blob, applyTimeStampToName(file.name));
+                setSharedFiles([new File([blob], file.name)], '皮肤替换');
+              } else {
+                outZip.file(file.name, blob);
+              }
+              okCount++;
+              log('✅ [' + (idx + 1) + '/' + targetFiles.length + '] ' + file.name + ' 替换完成（日间 ' + res.light + ' / 夜间 ' + res.dark + ' / demo ' + res.demo + '）');
+            } catch (err) {
+              log('❌ [' + (idx + 1) + '/' + targetFiles.length + '] ' + file.name + ' 失败: ' + err.message);
+            }
+          }
+          if (okCount === 0) { alert('没有成功替换任何皮肤包'); return; }
+          if (targetFiles.length > 1) {
+            const blob = await outZip.generateAsync({ type: 'blob', compression: 'STORE' });
+            const zipName = '皮肤替换_' + okCount + '个文件.zip';
+            saveAs(blob, zipName);
+            setSharedFiles([new File([blob], zipName)], '皮肤替换');
+          }
+          clearEditorSessions();
+          log('✅ 皮肤替换完成，已暂存到"继续编辑"池');
+        } finally {
+          skinReplaceBtn.disabled = false;
+          skinReplaceBtn.textContent = '🧩 替换图片并下载';
+        }
+      });
+
       async function replaceAudioInSkin(zip, audioFiles, originalFileName) {
         const outZip = new JSZip();
         const allFiles = Object.keys(zip.files).filter(k => !zip.files[k].dir);
@@ -4174,7 +4592,10 @@
         }
 
         const targetFiles = decryptedProcessed.files;
-        
+        /* 自定义文件名（可选）：不写后缀，自动补上原文件的后缀 */
+        const customNameRaw = (audioReplaceCustomName && audioReplaceCustomName.value ? audioReplaceCustomName.value : '').trim().replace(/[\\/:*?"<>|]/g, '');
+        const extOf = (n) => { const m = String(n).match(/(\.[a-z0-9]+)$/i); return m ? m[1] : ''; };
+
         if (targetFiles.length === 1) {
           const file = targetFiles[0];
           try {
@@ -4184,7 +4605,7 @@
             const outZip = await replaceAudioInSkin(zip, audioReplaceFiles, file.name);
             removeGSCopyrightFromZip(outZip, log);
             let outBlob = await outZip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
-            let finalFile = new File([outBlob], file.name);
+            let finalFile = new File([outBlob], customNameRaw ? (customNameRaw + extOf(file.name)) : file.name);
             if (savedMarkContent) {
               const items = parseMarkInput(savedMarkContent);
               if (items.length > 0) {
@@ -4227,7 +4648,7 @@
                 finalFile = await markFileWithCamouflage(finalFile, items);
               }
             }
-            const timeStampedName = applyTimeStampToName(finalFile.name);
+            const timeStampedName = applyTimeStampToName(customNameRaw ? (customNameRaw + '_' + (idx + 1) + extOf(file.name)) : finalFile.name);
             resultZip.file(timeStampedName, finalFile);
             lastAudioReplaceOutputs.push({ name: timeStampedName, blob: new Blob([await finalFile.arrayBuffer()], { type: finalFile.type || 'application/zip' }) });
             log('✅ [' + (idx + 1) + '/' + targetFiles.length + '] 替换成功: ' + timeStampedName);
@@ -4236,7 +4657,7 @@
           }
         }
         const outBlob = await resultZip.generateAsync({ type: 'blob', compression: 'STORE' });
-        const outZipName = '音效替换_' + targetFiles.length + '个文件.zip';
+        const outZipName = customNameRaw ? (customNameRaw + '.zip') : ('音效替换_' + targetFiles.length + '个文件.zip');
         saveAs(outBlob, outZipName);
         if (lastAudioReplaceOutputs.length > 0) replaceAudioZipBtn.disabled = false;
         setSharedFiles([new File([outBlob], outZipName)], '批量音效替换');
@@ -4863,6 +5284,9 @@
             uploadHint.textContent = '支持 .bds / .zip (可多选)';
             audioReplaceArea.style.display = 'none';
             audioGenArea.style.display = 'none';
+            skinReplacePackArea.style.display = 'none';
+            audioReplaceNameRow.style.display = 'none';
+            skinReplaceBtn.style.display = 'none';
             genAudioBtn.style.display = 'none';
           } else if (currentMode === 'bdi2bds') {
             uploadIcon.textContent = '📂';
@@ -4870,6 +5294,9 @@
             uploadHint.textContent = '支持 .bdi / .zip (可多选)';
             audioReplaceArea.style.display = 'none';
             audioGenArea.style.display = 'none';
+            skinReplacePackArea.style.display = 'none';
+            audioReplaceNameRow.style.display = 'none';
+            skinReplaceBtn.style.display = 'none';
             genAudioBtn.style.display = 'none';
           } else if (currentMode === 'audioExtract') {
             uploadIcon.textContent = '🎵';
@@ -4877,6 +5304,9 @@
             uploadHint.textContent = '支持 .bds / .bdi / .zip';
             audioReplaceArea.style.display = 'none';
             audioGenArea.style.display = 'none';
+            skinReplacePackArea.style.display = 'none';
+            audioReplaceNameRow.style.display = 'none';
+            skinReplaceBtn.style.display = 'none';
             genAudioBtn.style.display = 'none';
           } else if (currentMode === 'audioConvert') {
             uploadIcon.textContent = '🔄';
@@ -4884,6 +5314,9 @@
             uploadHint.textContent = '支持 .bds / .bdi / .zip';
             audioReplaceArea.style.display = 'none';
             audioGenArea.style.display = 'none';
+            skinReplacePackArea.style.display = 'none';
+            audioReplaceNameRow.style.display = 'none';
+            skinReplaceBtn.style.display = 'none';
             genAudioBtn.style.display = 'none';
           } else if (currentMode === 'audioReplace') {
             uploadIcon.textContent = '🔊';
@@ -4891,6 +5324,9 @@
             uploadHint.textContent = '支持 .bds / .bdi / .zip';
             audioReplaceArea.style.display = 'block';
             audioGenArea.style.display = 'none';
+            skinReplacePackArea.style.display = 'none';
+            audioReplaceNameRow.style.display = 'flex';
+            skinReplaceBtn.style.display = 'none';
             genAudioBtn.style.display = 'none';
           } else if (currentMode === 'audioGen') {
             uploadIcon.textContent = '🎼';
@@ -4898,7 +5334,20 @@
             uploadHint.textContent = '也可以直接在下方导入独立音频/音频包';
             audioReplaceArea.style.display = 'none';
             audioGenArea.style.display = 'block';
+            skinReplacePackArea.style.display = 'none';
+            audioReplaceNameRow.style.display = 'none';
+            skinReplaceBtn.style.display = 'none';
             genAudioBtn.style.display = 'flex';
+          } else if (currentMode === 'skinReplace') {
+            uploadIcon.textContent = '🧩';
+            uploadText.textContent = '上传皮肤包（要被替换图片的目标包）';
+            uploadHint.textContent = '支持 .bds / .bdi / .zip (可多选)';
+            audioReplaceArea.style.display = 'none';
+            audioGenArea.style.display = 'none';
+            skinReplacePackArea.style.display = 'block';
+            audioReplaceNameRow.style.display = 'none';
+            skinReplaceBtn.style.display = 'inline-flex';
+            genAudioBtn.style.display = 'none';
           }
           
           selectedFiles = [];
@@ -4908,6 +5357,13 @@
           audioReplaceZipBlob = null;
           audioReplaceStatus.style.display = 'none';
           replaceAudioBtn.disabled = true;
+          skinReplacePackZip = null;
+          skinReplacePackFile = null;
+          skinReplaceImages = { light: [], dark: [], demo: null };
+          skinReplacePackStatus.style.display = 'none';
+          skinReplaceBtn.disabled = true;
+          skinDeleteMap = {};
+          skinImgPanelOpen = false;
           clearEditorSessions();
           updateFileStatus(null);
           clearLog();
@@ -5084,6 +5540,12 @@
         customDemoCompressedBlob = null;
         audioReplaceZipBlob = null;
         audioReplaceFiles = [];
+        skinReplacePackZip = null;
+        skinReplacePackFile = null;
+        skinReplaceImages = { light: [], dark: [], demo: null };
+        skinReplacePackStatus.style.display = 'none';
+        skinDeleteMap = {};
+        skinImgPanelOpen = false;
         isCompressed = false;
         clearEditorSessions();
         clearLog();
@@ -6075,6 +6537,9 @@
       extractResult.classList.remove('show');
       audioReplaceArea.style.display = 'none';
       audioGenArea.style.display = 'none';
+      skinReplacePackArea.style.display = 'none';
+      audioReplaceNameRow.style.display = 'none';
+      skinReplaceBtn.style.display = 'none';
       genAudioBtn.style.display = 'none';
       executeSelectedBtn.disabled = true;
 
