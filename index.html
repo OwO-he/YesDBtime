@@ -448,7 +448,6 @@
   <div class="toast-container" id="toastContainer"></div>
   <div class="card">
     <h1>⌨️ 自动解密★百度输入法工具</h1>
-    <div class="sub">图片压缩 · 皮肤双向转换 · 溯源秘标 · 加密/解密 · 音效处理 · 字体打标 · 融彩转换 · 文本编辑</div>
 
     <div class="main-tabs" id="mainTabs">
       <button class="main-tab active" data-section="skin">🎨 皮肤工具</button>
@@ -652,6 +651,14 @@
     <details style="margin:14px 0 4px;padding:0;background:var(--bg-subtle);border-radius:14px;border:1px solid rgba(0,0,0,0.06);overflow:hidden;">
       <summary style="padding:10px 16px;font-size:0.82rem;font-weight:600;color:var(--text-main);cursor:pointer;user-select:none;list-style-position:inside;">📜 更新日志</summary>
       <div style="padding:2px 16px 12px;font-size:0.76rem;color:var(--text-light);line-height:1.7;">
+        <p style="margin:6px 0 2px;font-weight:600;color:var(--text-main);">v4.34 · 2026-11-29</p>
+        <ul style="margin:2px 0 8px;padding-left:18px;">
+          <li>加密新增「🔀 乱码命名」：把 res 内图片和对应 til 改成随机乱码名，并同步更新样式表引用，防止拆包直接替换；demo.png 等固定名资源保持原名</li>
+          <li>对照表打乱后内嵌在包内，恢复命名时无需另存任何文件</li>
+          <li>新增「🔀 恢复命名」模式：只传乱码包即可还原原文件名并自动解密，恢复后自动清除包内对照表</li>
+          <li>修复样式表带特殊文件头时整读整写会改坏编码的问题，改名与恢复均按原编码写回</li>
+          <li>顶部功能列表副标题移除</li>
+        </ul>
         <p style="margin:6px 0 2px;font-weight:600;color:var(--text-main);">v4.33 · 2026-11-28</p>
         <ul style="margin:2px 0 8px;padding-left:18px;">
           <li>修复皮肤替换后产物无法使用的问题，改为重建打包</li>
@@ -830,6 +837,7 @@
       <div class="mode-tabs" id="encryptModeTabs">
         <button class="mode-tab active" data-encrypt-mode="encrypt">🔐 加密</button>
         <button class="mode-tab" data-encrypt-mode="decrypt">🔓 解密</button>
+        <button class="mode-tab" data-encrypt-mode="restore">🔀 恢复命名</button>
       </div>
       <div class="encrypt-options" id="encryptOptionGroup">
         <label>
@@ -842,12 +850,17 @@
           <span style="font-weight:600;">区分加密 (.bds 破坏CD / .bdi 伪加密)</span>
           <span style="font-weight:400;color:var(--text-light);">—— .bds 用 BDS 方式，.bdi / .zip 用伪加密</span>
         </label>
+        <label style="flex-basis:100%;">
+          <input type="checkbox" id="encryptRename" checked>
+          <span style="font-weight:600;">🔀 乱码命名（防拆包替换）</span>
+          <span style="font-weight:400;color:var(--text-light);">—— 加密时把 res 内图片和 til 改成随机乱码名，并同步更新样式表引用，不影响使用</span>
+        </label>
       </div>
       <div class="upload-area" id="encryptDropZone">
         <span class="upload-icon" id="encryptDropIcon">📂</span>
         <div class="upload-text">拖拽文件到这里，或 <span style="color:var(--color-accent);font-weight:600;">点击选择多个文件</span></div>
-        <div class="upload-hint">支持 .zip .bds .bdi 批量上传</div>
-        <input type="file" id="encryptFileInput" accept=".zip,.bds,.bdi,application/zip,application/octet-stream,application/x-zip-compressed" multiple>
+        <div class="upload-hint">支持 .zip .bds .bdi 批量上传（恢复命名模式可加对照表 .json）</div>
+        <input type="file" id="encryptFileInput" accept=".zip,.bds,.bdi,.json,application/zip,application/octet-stream,application/x-zip-compressed,application/json" multiple>
       </div>
 
       <div class="action-row" style="margin-bottom: 8px;">
@@ -869,6 +882,9 @@
         • 单个文件处理完成后，点击文件名右侧的 <strong>「⬇ 下载」</strong> 即可单独下载。<br>
         • 多个文件处理完成后，点击 <strong>「📦 打包下载全部」</strong> 可打包为 zip 下载。<br>
         • 加密：修改 Local + Central 加密标志位，百度输入法正常使用，解压软件提示需要密码。<br>
+        • 乱码命名：加密时把 res 内图片和 til 改成随机乱码名并同步更新引用，防止别人拆包直接替换图片；demo.png 保持原名。<br>
+        • 对照表已打乱后内嵌在包内，恢复命名时只需上传乱码包即可，无需另存任何文件。<br>
+        • 恢复命名：切换到「🔀 恢复命名」，上传乱码皮肤包，即可还原原文件名并自动解密（也兼容旧版外部「_对照表.json」）。<br>
         • 解密：清除加密标志位，恢复原始 zip。
       </div>
     </div>
@@ -5645,6 +5661,7 @@
       });
 
       const encryptModeTabs = document.getElementById('encryptModeTabs');
+      const encryptRename = document.getElementById('encryptRename');
       const encryptDropZone = document.getElementById('encryptDropZone');
       const encryptFileInput = document.getElementById('encryptFileInput');
       const encryptFileList = document.getElementById('encryptFileList');
@@ -5973,14 +5990,130 @@
           return { data: result.data, localCount: result.lhCount, centralCount: result.cdCount, method: 'pseudo' };
         }
       }
+      function randomHexName(len) {
+        let s = '';
+        const chars = '0123456789abcdef';
+        for (let i = 0; i < (len || 32); i++) s += chars[Math.floor(Math.random() * 16)];
+        return s;
+      }
+      function escapeRegExp(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+      // 样式表可能是纯 ASCII / 带 UTF-16 BOM 的 ASCII / 真 UTF-16，按原编码读、按原编码写回，避免改坏文件头
+      function decodeTextSmart(u8) {
+        let s = '';
+        for (let i = 0; i < u8.length; i += 0x8000) {
+          s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+        }
+        if (s.includes('NM_IMG=') || s.includes('HL_IMG=')) return { enc: 'latin1', text: s };
+        if (u8.length >= 2 && u8[0] === 0xFF && u8[1] === 0xFE) {
+          let t = '';
+          for (let i = 2; i + 1 < u8.length; i += 2) t += String.fromCharCode(u8[i] | (u8[i + 1] << 8));
+          if (t.includes('NM_IMG=') || t.includes('HL_IMG=')) return { enc: 'utf16le', text: t };
+        }
+        if (u8.length >= 2 && u8[0] === 0xFE && u8[1] === 0xFF) {
+          let t = '';
+          for (let i = 2; i + 1 < u8.length; i += 2) t += String.fromCharCode((u8[i] << 8) | u8[i + 1]);
+          if (t.includes('NM_IMG=') || t.includes('HL_IMG=')) return { enc: 'utf16be', text: t };
+        }
+        return { enc: 'utf8', text: new TextDecoder('utf-8').decode(u8) };
+      }
+      function encodeTextSmart(enc, text) {
+        if (enc === 'latin1') {
+          const u8 = new Uint8Array(text.length);
+          for (let i = 0; i < text.length; i++) u8[i] = text.charCodeAt(i) & 0xFF;
+          return u8;
+        }
+        if (enc === 'utf16le' || enc === 'utf16be') {
+          const le = (enc === 'utf16le');
+          const u8 = new Uint8Array(2 + text.length * 2);
+          u8[0] = le ? 0xFF : 0xFE; u8[1] = le ? 0xFE : 0xFF;
+          for (let i = 0; i < text.length; i++) {
+            const c = text.charCodeAt(i);
+            if (le) { u8[2 + i * 2] = c & 0xFF; u8[3 + i * 2] = c >> 8; }
+            else { u8[2 + i * 2] = c >> 8; u8[3 + i * 2] = c & 0xFF; }
+          }
+          return u8;
+        }
+        return new TextEncoder().encode(text);
+      }
+      // 乱码命名：res 根目录下被样式表引用的 png / til 按同名配对改成随机十六进制名，
+      // 并同步更新 res/default.css 里的 NM_IMG / HL_IMG 引用，皮肤功能不受影响；
+      // demo.png、pop_menu_icons 等按固定文件名读取的资源保持原名
+      async function renameSkinFilesInZip(zip) {
+        const paths = Object.keys(zip.files).filter(p => {
+          const f = zip.files[p];
+          if (f.dir) return false;
+          const segs = p.split('/');
+          if (segs.some(seg => seg === '__MACOSX' || seg.startsWith('._'))) return false;
+          return /(^|\/)res\/[^/]+\.(png|til)$/i.test(p);
+        });
+        if (paths.length === 0) return new Map();
+        // 先读样式表，只改它实际引用到的图片名
+        const cssPaths = Object.keys(zip.files).filter(p => !zip.files[p].dir && /(^|\/)res\/default\.css$/i.test(p));
+        if (cssPaths.length === 0) return new Map();
+        const refNames = new Set();
+        const cssDecs = [];
+        for (const cp of cssPaths) {
+          const dec = decodeTextSmart(await zip.files[cp].async('uint8array'));
+          cssDecs.push(dec);
+          for (const m of dec.text.matchAll(/(?:NM_IMG|HL_IMG)=([A-Za-z0-9_]+)/g)) refNames.add(m[1]);
+        }
+        // 按基础名分组：同名 png / til 共用一个乱码名，保持配对关系
+        const baseMap = new Map();
+        for (const p of paths) {
+          const fname = p.split('/').pop();
+          const base = fname.replace(/\.(png|til)$/i, '');
+          if (base.toLowerCase() === 'demo') continue;
+          if (!refNames.has(base) || baseMap.has(base)) continue;
+          baseMap.set(base, randomHexName(32));
+        }
+        if (baseMap.size === 0) return 0;
+        for (const p of paths) {
+          const segs = p.split('/');
+          const fname = segs.pop();
+          const base = fname.replace(/\.(png|til)$/i, '');
+          const hex = baseMap.get(base);
+          if (!hex) continue;
+          const ext = fname.slice(fname.lastIndexOf('.'));
+          const newPath = segs.concat(hex + ext).join('/');
+          const data = await zip.files[p].async('uint8array');
+          zip.file(newPath, data);
+          zip.remove(p);
+        }
+        // 同步更新样式表中的图片名引用（按各自原编码写回）
+        const names = Array.from(baseMap.keys()).sort((a, b) => b.length - a.length);
+        const re = new RegExp('(NM_IMG|HL_IMG)=(' + names.map(escapeRegExp).join('|') + ')(?=[,\\r\\n])', 'g');
+        for (let i = 0; i < cssPaths.length; i++) {
+          const newCss = cssDecs[i].text.replace(re, (m, p1, n) => p1 + '=' + baseMap.get(n));
+          zip.file(cssPaths[i], encodeTextSmart(cssDecs[i].enc, newCss));
+        }
+        // 把 hex→原名 对照表打乱后内嵌进 res，恢复命名时无需另存文件
+        const hexToOrig = {};
+        for (const [orig, hex] of baseMap.entries()) hexToOrig[hex] = orig;
+        const cssDir = cssPaths[0].split('/').slice(0, -1).join('/');
+        zip.file((cssDir ? cssDir + '/' : '') + '.nmx', buildEmbeddedMap(hexToOrig));
+        return baseMap;
+      }
       async function processFileEncrypt(file) {
         let arrayBuffer = await file.arrayBuffer();
+        let renameMap = null;
         // 加密前先尝试以 zip 打开并删除 GSCopyright.json（已加密打不开的文件跳过）
         try {
           const zip = await JSZip.loadAsync(arrayBuffer);
+          let changed = false;
           if (removeGSCopyrightFromZip(zip, encryptLog) > 0) {
-            arrayBuffer = await zip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE', compressionOptions: { level: 1 } });
+            changed = true;
             encryptLog('🗑️ 已删除 GSCopyright.json: ' + file.name);
+          }
+          if (encryptRename && encryptRename.checked) {
+            renameMap = await renameSkinFilesInZip(zip);
+            if (renameMap && renameMap.size > 0) {
+              changed = true;
+              encryptLog('🔀 已乱码命名 ' + renameMap.size + ' 组图片/til: ' + file.name);
+              encryptLog('📄 对照表已内嵌包内，恢复命名时无需另存文件');
+            }
+          }
+          if (changed) {
+            arrayBuffer = await zip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE', compressionOptions: { level: 1 } });
           }
         } catch (e) {}
         const data = new Uint8Array(arrayBuffer);
@@ -5990,7 +6123,8 @@
           processedName: applyTimeStampToName(file.name),
           localCount: result.localCount,
           centralCount: result.centralCount,
-          method: result.method || 'pseudo'
+          method: result.method || 'pseudo',
+          renameMap: renameMap && renameMap.size > 0 ? renameMap : null
         };
       }
       async function processFileDecrypt(file) {
@@ -6013,6 +6147,113 @@
           localCount: result.localCount,
           centralCount: result.centralCount,
           method: result.method || 'pseudo'
+        };
+      }
+
+      // ===== 恢复命名：对照表已内嵌在皮肤包内（打乱存储），直接还原 =====
+      const EMBED_MAP_KEY = 'BaiduIme::SkinNameMap::v1';
+      function buildEmbeddedMap(hexToOrig) {
+        const payload = JSON.stringify({ app: 'baidu-skin-rename', names: hexToOrig });
+        const bytes = new TextEncoder().encode(payload);
+        const xored = new Uint8Array(bytes.length);
+        for (let i = 0; i < bytes.length; i++) xored[i] = bytes[i] ^ (EMBED_MAP_KEY.charCodeAt(i % EMBED_MAP_KEY.length) & 0xFF);
+        let bin = '';
+        for (let i = 0; i < xored.length; i += 0x8000) bin += String.fromCharCode.apply(null, xored.subarray(i, i + 0x8000));
+        return btoa(bin);
+      }
+      function decodeEmbeddedMap(b64) {
+        const bin = atob(b64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i) ^ (EMBED_MAP_KEY.charCodeAt(i % EMBED_MAP_KEY.length) & 0xFF);
+        const obj = JSON.parse(new TextDecoder().decode(bytes));
+        if (!obj || obj.app !== 'baidu-skin-rename' || !obj.names || typeof obj.names !== 'object') {
+          throw new Error('包内对照表无效');
+        }
+        return obj.names;
+      }
+      function parseRenameMapBlob(text) {
+        const obj = JSON.parse(text);
+        if (!obj || obj.app !== 'baidu-skin-rename' || !obj.names || typeof obj.names !== 'object') {
+          throw new Error('不是有效的对照表文件');
+        }
+        return obj;
+      }
+      async function restoreSkinNamesInZip(zip, hexToOrig) {
+        const paths = Object.keys(zip.files).filter(p => {
+          const f = zip.files[p];
+          if (f.dir) return false;
+          const segs = p.split('/');
+          if (segs.some(seg => seg === '__MACOSX' || seg.startsWith('._'))) return false;
+          return /(^|\/)res\/[^/]+\.(png|til)$/i.test(p);
+        });
+        let restored = 0;
+        for (const p of paths) {
+          const segs = p.split('/');
+          const fname = segs.pop();
+          const base = fname.replace(/\.(png|til)$/i, '');
+          const orig = hexToOrig[base];
+          if (!orig) continue;
+          const ext = fname.slice(fname.lastIndexOf('.'));
+          const newPath = segs.concat(orig + ext).join('/');
+          const data = await zip.files[p].async('uint8array');
+          zip.file(newPath, data);
+          zip.remove(p);
+          restored++;
+        }
+        // 同步把样式表里的乱码引用改回原名（按各自原编码写回）
+        const cssPaths = Object.keys(zip.files).filter(p => !zip.files[p].dir && /(^|\/)res\/default\.css$/i.test(p));
+        const hexes = Object.keys(hexToOrig).sort((a, b) => b.length - a.length);
+        const re = new RegExp('(NM_IMG|HL_IMG)=(' + hexes.map(escapeRegExp).join('|') + ')(?=[,\\r\\n])', 'g');
+        for (const cp of cssPaths) {
+          const dec = decodeTextSmart(await zip.files[cp].async('uint8array'));
+          const newCss = dec.text.replace(re, (m, p1, n) => p1 + '=' + hexToOrig[n]);
+          zip.file(cp, encodeTextSmart(dec.enc, newCss));
+        }
+        return restored;
+      }
+      async function processFileRestore(item, allItems) {
+        let arrayBuffer = await item.file.arrayBuffer();
+        // 先解密标志位，再还原文件名
+        const data = new Uint8Array(arrayBuffer);
+        const dec = processDecryptByFileType(data, item.file.name);
+        arrayBuffer = dec.data.buffer.slice(dec.data.byteOffset, dec.data.byteOffset + dec.data.byteLength);
+        let hexToOrig = null;
+        let mapItem = null;
+        let nmxPath = null;
+        try {
+          const zip = await JSZip.loadAsync(arrayBuffer);
+          // 优先用包内嵌的对照表
+          nmxPath = Object.keys(zip.files).find(p => !zip.files[p].dir && /(^|\/)\.nmx$/i.test(p));
+          if (nmxPath) {
+            hexToOrig = decodeEmbeddedMap(await zip.files[nmxPath].async('string'));
+          } else {
+            // 兼容旧版：找配套的外部对照表文件
+            const pkgBase = item.file.name.replace(/\.(zip|bds|bdi)$/i, '');
+            mapItem = allItems.find(it => it !== item && it.file.name.toLowerCase() === (pkgBase + '_对照表.json').toLowerCase());
+            if (mapItem) hexToOrig = parseRenameMapBlob(await mapItem.file.text()).names;
+          }
+          if (!hexToOrig) {
+            throw new Error('包内没有对照表，也没找到配套的「_对照表.json」，无法恢复');
+          }
+          const restored = await restoreSkinNamesInZip(zip, hexToOrig);
+          if (nmxPath) zip.remove(nmxPath); // 恢复后清掉内嵌对照表
+          if (restored > 0) {
+            encryptLog('🔀 已还原 ' + restored + ' 个文件名: ' + item.file.name);
+            arrayBuffer = await zip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE', compressionOptions: { level: 1 } });
+          } else {
+            encryptLog('⚠️ 未发现可还原的乱码文件（可能已恢复过）: ' + item.file.name);
+          }
+        } catch (e) {
+          throw new Error('无法读取皮肤包: ' + e.message);
+        }
+        // 用掉外部对照表后从列表移除
+        if (mapItem) encryptFileItems = encryptFileItems.filter(it => it !== mapItem);
+        return {
+          processedBlob: new Blob([arrayBuffer], { type: 'application/octet-stream' }),
+          processedName: applyTimeStampToName(item.file.name),
+          localCount: dec.localCount,
+          centralCount: dec.centralCount,
+          method: dec.method || 'pseudo'
         };
       }
 
@@ -6075,9 +6316,11 @@
       }
       function addEncryptFiles(files) {
         let added = 0;
+        const allowJson = (encryptCurrentMode === 'restore');
         for (const file of files) {
           const ext = file.name.split('.').pop().toLowerCase();
-          if (!['zip', 'bds', 'bdi'].includes(ext)) { encryptLog('⚠️ 跳过不支持的文件: ' + file.name); continue; }
+          const okExts = allowJson ? ['zip', 'bds', 'bdi', 'json'] : ['zip', 'bds', 'bdi'];
+          if (!okExts.includes(ext)) { encryptLog('⚠️ 跳过不支持的文件: ' + file.name); continue; }
           const exists = encryptFileItems.some(item => item.file.name === file.name && item.file.size === file.size);
           if (exists) continue;
           encryptFileItems.push({ id: ++encryptIdCounter, file: file, status: 'pending', processedBlob: null, processedName: '', localCount: undefined, centralCount: undefined, method: null });
@@ -6093,18 +6336,29 @@
         const pendingItems = encryptFileItems.filter(item => item.status === 'pending');
         if (pendingItems.length === 0) { encryptLog('没有待处理的文件'); return; }
         const isEncrypt = (encryptCurrentMode === 'encrypt');
+        const isRestore = (encryptCurrentMode === 'restore');
+        if (isRestore && !pendingItems.some(item => !item.file.name.toLowerCase().endsWith('.json'))) {
+          encryptLog('⚠️ 请上传要恢复的乱码皮肤包'); return;
+        }
         encryptActionBtn.disabled = true;
         encryptActionBtn.textContent = '⏳ 处理中 (' + pendingItems.length + ')';
         let successCount = 0, errorCount = 0;
         for (const item of pendingItems) {
           try {
-            const result = isEncrypt ? await processFileEncrypt(item.file) : await processFileDecrypt(item.file);
+            let result;
+            if (isRestore) {
+              if (item.file.name.toLowerCase().endsWith('.json')) continue; // 对照表由配套皮肤包消费
+              result = await processFileRestore(item, encryptFileItems);
+            } else {
+              result = isEncrypt ? await processFileEncrypt(item.file) : await processFileDecrypt(item.file);
+            }
             item.processedBlob = result.processedBlob;
             item.processedName = result.processedName;
             item.status = 'done';
             item.localCount = result.localCount;
             item.centralCount = result.centralCount;
             item.method = result.method;
+            item.renameMap = result.renameMap || null;
             successCount++;
           } catch (err) {
             item.status = 'error';
@@ -6113,7 +6367,7 @@
           }
           renderEncryptFileList();
         }
-        const modeLabel = isEncrypt ? '加密' : '解密';
+        const modeLabel = isEncrypt ? '加密' : (isRestore ? '恢复命名' : '解密');
         const actionLabel = isEncrypt ? '修改' : '清除';
         let detailLogs = '';
         for (const item of encryptFileItems) {
@@ -6123,14 +6377,14 @@
           }
         }
         encryptLog('✅ 批量' + modeLabel + '完成！成功 ' + successCount + ' 个，失败 ' + errorCount + ' 个。' + detailLogs);
-        encryptActionBtn.textContent = isEncrypt ? '🔐 批量加密' : '🔓 批量解密';
+        encryptActionBtn.textContent = isEncrypt ? '🔐 批量加密' : (isRestore ? '🔀 恢复原名' : '🔓 批量解密');
         const hasPending = encryptFileItems.some(item => item.status === 'pending');
         encryptActionBtn.disabled = !hasPending;
         encryptDownloadAllBtn.disabled = !encryptFileItems.some(item => item.status === 'done');
         const doneItems = encryptFileItems.filter(item => item.status === 'done' && item.processedBlob);
         if (doneItems.length > 0) {
           const outFiles = doneItems.map(item => new File([item.processedBlob], encryptOutputName(item)));
-          setSharedFiles(outFiles, isEncrypt ? '加密' : '解密');
+          setSharedFiles(outFiles, isEncrypt ? '加密' : (isRestore ? '恢复命名' : '解密'));
           encryptLog('📥 处理结果已暂存到“继续编辑”池，可在其他工具中继续操作');
         }
       }
@@ -6183,17 +6437,23 @@
           encryptActionBtn.textContent = '🔐 批量加密';
           encryptActionBtn.className = 'action-btn encrypt-btn';
           encryptDropIcon.textContent = '📂';
+        } else if (mode === 'restore') {
+          encryptActionBtn.textContent = '🔀 恢复原名';
+          encryptActionBtn.className = 'action-btn decrypt-btn';
+          encryptDropIcon.textContent = '🔀';
         } else {
           encryptActionBtn.textContent = '🔓 批量解密';
           encryptActionBtn.className = 'action-btn decrypt-btn';
           encryptDropIcon.textContent = '🔓';
         }
+        // 对照表只在恢复命名模式下有效，切换模式时清掉
+        encryptFileItems = encryptFileItems.filter(it => !it.file.name.toLowerCase().endsWith('.json'));
         for (const item of encryptFileItems) {
           item.status = 'pending'; item.processedBlob = null; item.processedName = '';
-          item.localCount = undefined; item.centralCount = undefined; item.method = null;
+          item.localCount = undefined; item.centralCount = undefined; item.method = null; item.renameMap = null;
         }
         renderEncryptFileList();
-        if (encryptFileItems.length > 0) encryptLog('已切换至「' + (mode === 'encrypt' ? '加密' : '解密') + '」模式，请重新处理文件。');
+        if (encryptFileItems.length > 0) encryptLog('已切换至「' + (mode === 'encrypt' ? '加密' : (mode === 'restore' ? '恢复命名' : '解密')) + '」模式，请重新处理文件。');
         else encryptClearLog();
       }
 
